@@ -159,7 +159,7 @@ local MasterLicenseCore = (function()
     local CreateLocalExpiry = (function()
         return function(cfg, wallReader)
             local E = {}
-            local expiredText = 'Mod expired. DM @UX_Official for renewal.'
+            local expiredText = 'Mod expired. DM @USMAN PRO for renewal.'
             local tamperText  = "Don't be over smart"
             local blockedMessage, blockedPhase
             local function finite(n)
@@ -658,7 +658,7 @@ local MasterLoginUI = (function()
                 visibility(background, visibleEnum)
                 add(background, 0, 0, 500, 248, 0)
                 local title = make("TextBlock", data.container)
-                title:SetText("OWNER @UX_Official  Online Login")
+                title:SetText("OWNER @USMAN PRO  Online Login")
                 setTextStyle(title, 19, color(0.1, 0.9, 1, 1))
                 visibility(title, passive); add(title, 22, 15, 456, 30, 1)
                 data.input = make("EditableTextBox", data.container)
@@ -781,7 +781,7 @@ local MasterWelcomeUI = (function()
         end
         local WelcomeUI = {Width = 600, Height = 276}
         local WelcomeText = {
-            "Welcome to @UX_Official Lua mod",
+            "Welcome to @USMAN PRO Lua mod",
             "Kill limit 8-10",
             "Play smart and avoid report",
         }
