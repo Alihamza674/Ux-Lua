@@ -8270,6 +8270,7 @@ return function(P, cfg, deps)
     local A = {}
     local phase, message = 'locked', 'Enter your key to sign in.'
     local allowed, pending, generation = false, nil, 0
+    local sessionKey
     local expiresAt
     local lastRequestLatencyMs, lastResponseTime, lastResponseWorld
     local startFn, stopFn, payloadStarted, restartRequired
@@ -8304,6 +8305,7 @@ return function(P, cfg, deps)
     local function revoke(text,state)
         generation=generation+1
         allowed,pending,expiresAt=false,nil,nil
+        sessionKey=nil
         lastRequestLatencyMs,lastResponseTime,lastResponseWorld=nil,nil,nil
         stopPayload()
         local localDenied=false
@@ -8423,6 +8425,7 @@ return function(P, cfg, deps)
             lastRequestLatencyMs=(current-pending.started)*1000
             lastResponseTime,lastResponseWorld=current,worldNow
             pending=nil
+            sessionKey=key
             allowed,expiresAt=true,expiry
             if not startPayload() then return end
             notify('Login successful.','active')
@@ -8481,6 +8484,9 @@ return function(P, cfg, deps)
     end
     -- A.GetRemainingSeconds: Session access has no timed lease or periodic expiry countdown. By @Masterpiece2026
     function A.GetRemainingSeconds() return nil end
+    -- A.GetSessionKey: Returns the in-memory session key to the host runtime.
+    -- It is never persisted to disk.
+    function A.GetSessionKey() return sessionKey end
     -- A.GetState: Returns authentication status, authorization, expiry, and payload linkage details. By @Masterpiece2026
     function A.GetState()
         local authorized=A.IsAuthorized()
@@ -8881,7 +8887,8 @@ local function validConfig(c)
 end
 function Runtime.new(env,config,Core,LoginUI)
     local self=setmetatable({env=env or _G,reason='login_required',active=false,
-        ready=false,disposed=false,uiRetryAt=0,uiFailures=0},Runtime)
+        ready=false,disposed=false,uiRetryAt=0,uiFailures=0,
+        sessionLoginStarted=false},Runtime)
     if not validConfig(config) or type(Core)~='table' or type(Core.new)~='function'
         or type(Core.Primitives)~='table' then
         self.reason='license_dependencies_unavailable';return self
@@ -9042,9 +9049,35 @@ function Runtime:update()
     if not self.ready then self.reason='waiting_stable_gameplay';self:_ui('Hide');return false end
     local state=self.auth.GetState()
     if self.active then
+        local getSessionKey=self.auth.GetSessionKey
+        if type(getSessionKey)=='function' then
+            local ok,key=pcall(getSessionKey)
+            if ok and type(key)=='string' and #key>0 and #key<=512 then
+                _G.__UX_LOGIN_SESSION_KEY=key
+                self.sessionLoginStarted=false
+            end
+        end
         self.reason='active';self:_ui('Hide');return true
     end
     self.reason='login_required'
+
+    -- If this runtime object was recreated during the same app process,
+    -- silently restore the already-authenticated session. The key lives only
+    -- in process memory and disappears when the app/process is restarted.
+    local cachedKey=_G.__UX_LOGIN_SESSION_KEY
+    if type(cachedKey)=='string' and #cachedKey>0 and #cachedKey<=512
+        and not self.sessionLoginStarted
+        and not state.restartRequired and state.phase~='expired'
+        and state.phase~='tampered' then
+        self.sessionLoginStarted=true
+        local ok,accepted=pcall(self.auth.Login,cachedKey)
+        if not ok or accepted~=true then
+            self.sessionLoginStarted=false
+            _G.__UX_LOGIN_SESSION_KEY=nil
+        else
+            return false
+        end
+    end
     if state.restartRequired or state.phase=='expired' or state.phase=='tampered' then
         self.reason=state.restartRequired and 'restart_required' or state.phase
         self:_showPanel(now,state,true);return false
@@ -9090,6 +9123,8 @@ function Runtime:getStatus()
 end
 function Runtime:logout()
     self.active=false
+    self.sessionLoginStarted=false
+    _G.__UX_LOGIN_SESSION_KEY=nil
     if self.auth then self.auth.Logout()end
     self.reason='login_required'
     return true
