@@ -159,7 +159,7 @@ local MasterLicenseCore = (function()
     local CreateLocalExpiry = (function()
         return function(cfg, wallReader)
             local E = {}
-            local expiredText = 'Mod expired. DM @USMAN PRO for renewal.'
+            local expiredText = 'Mod expired. DM @UX_Official for renewal.'
             local tamperText  = "Don't be over smart"
             local blockedMessage, blockedPhase
             local function finite(n)
@@ -658,7 +658,7 @@ local MasterLoginUI = (function()
                 visibility(background, visibleEnum)
                 add(background, 0, 0, 500, 248, 0)
                 local title = make("TextBlock", data.container)
-                title:SetText("OWNER @USMAN PRO  Online Login")
+                title:SetText("OWNER @UX_Official  Online Login")
                 setTextStyle(title, 19, color(0.1, 0.9, 1, 1))
                 visibility(title, passive); add(title, 22, 15, 456, 30, 1)
                 data.input = make("EditableTextBox", data.container)
@@ -781,7 +781,7 @@ local MasterWelcomeUI = (function()
         end
         local WelcomeUI = {Width = 600, Height = 276}
         local WelcomeText = {
-            "Welcome to @USMAN PRO Lua mod",
+            "Welcome to @UX_Official Lua mod",
             "Kill limit 8-10",
             "Play smart and avoid report",
         }
@@ -1292,12 +1292,11 @@ end
 -- ============================================================================
 _G.AK_Features = {
     {id = "ESP_HP",       name = "ESP Health Bar", val = 1, type = "toggle"},
-    {id = "ESP_BOX",      name = "ESP Box",        val = 1, type = "toggle"},
+    {id = "ESP_BOX",      name = "ESP Box",        val = 0, type = "toggle"},
     {id = "ESP_LINE",     name = "ESP Head Line",  val = 1, type = "toggle"},
     {id = "ENEMY_COUNT",  name = "Enemy Counter",  val = 1, type = "toggle"},
     {id = "ESP_MAP",      name = "Mini Map ESP",   val = 1, type = "toggle"},
     {id = "ESP_WALLHACK", name = "Wallhack",       val = 1, type = "toggle"},
-    {id = "AIMBOT",       name = "Aimbot",         val = 1, type = "toggle"},
 }
 function _G.AK_GetVal(featureId)
     for _, feature in ipairs(_G.AK_Features) do
@@ -1763,23 +1762,7 @@ local function installUltimateDetectionBypass()
             end
         end
     end)
-    pcall(function()
-        local W=import("ShootWeaponEntity") or import("ShootWeaponEntityComp")
-        if W then
-            local mt=getmetatable(W) or {}
-            local oi=mt.__index
-            mt.__index=function(s,k)
-                if active() and type(k)=='string' then
-                    if k=="RecoilKickADS" or k=="GameDeviationFactor" or k=="GameDeviationAccuracy" then
-                        return 1.0
-                    end
-                end
-                if oi then return oi(s,k) end
-                return rawget(s,k)
-            end
-            setmetatable(W,mt)
-        end
-    end)
+   
     pcall(function()
         local SM=require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
         if SM then
@@ -3052,10 +3035,10 @@ local WallhackRenderer = (function()
     M._LastWorld = nil
 
     M.Colors = {
-        RealVisible  = FLinearColor and FLinearColor(100, 0,   0,   100) or {R=100,G=0,B=0,A=100},
-        RealOccluded = FLinearColor and FLinearColor(0,   100, 0,   100) or {R=0,G=100,B=0,A=100},
-        BotVisible   = FLinearColor and FLinearColor(100, 1,   0,   100) or {R=100,G=1,B=0,A=100},
-        BotOccluded  = FLinearColor and FLinearColor(0,   10,  10,  100) or {R=0,G=10,B=10,A=100},
+        RealVisible  = FLinearColor and FLinearColor(0, 100, 0, 100) or {R=0, G=100, B=0, A=100},
+        RealOccluded = FLinearColor and FLinearColor(100, 0, 0, 100) or {R=100, G=0, B=0, A=100},
+        BotVisible = FLinearColor and FLinearColor(100, 100, 100, 100) or {R=100, G=100, B=100, A=100},
+        BotOccluded = FLinearColor and FLinearColor(100, 100, 0, 100) or {R=100, G=100, B=0, A=100},
     }
 
     local function SetupConsole()
@@ -3398,88 +3381,6 @@ local function processEnemyMapESP(enemy, localPlayer, isMapESPEnabled)
 end
 
 -- ============================================================================
--- 10. ApplyHardAimbot  === Robust accessor chain ===
--- ============================================================================
-function ApplyHardAimbot()
-    if not CheckExpiration() then return end
-    pcall(function()
-        local pc = nil
-        pcall(function()
-            if GameplayData and GameplayData.GetPlayerController then
-                pc = GameplayData.GetPlayerController()
-            end
-        end)
-        if not slua.isValid(pc) then
-            pcall(function()
-                if slua_GameFrontendHUD then pc = slua_GameFrontendHUD:GetPlayerController() end
-            end)
-        end
-        if not slua.isValid(pc) then return end
-
-        local char = nil
-        pcall(function() char = pc:GetPlayerCharacterSafety() end)
-        if not slua.isValid(char) then
-            pcall(function() if pc.GetPawn then char = pc:GetPawn() end end)
-        end
-        if not slua.isValid(char) then
-            pcall(function()
-                if GameplayData and GameplayData.GetPlayerCharacter then
-                    char = GameplayData.GetPlayerCharacter()
-                end
-            end)
-        end
-        if not slua.isValid(char) then return end
-
-        local wm = char.WeaponManagerComponent
-        if not slua.isValid(wm) then
-            pcall(function() wm = char:GetWeaponManager() end)
-        end
-        if not slua.isValid(wm) then return end
-
-        local weapon = wm.CurrentWeaponReplicated
-        if not slua.isValid(weapon) then
-            pcall(function() weapon = wm.CurrentWeapon end)
-        end
-        if not slua.isValid(weapon) then
-            pcall(function() if char.GetCurrentWeapon then weapon = char:GetCurrentWeapon() end end)
-        end
-        if not slua.isValid(weapon) then return end
-
-        local entity = weapon.ShootWeaponEntityComp
-        if not slua.isValid(entity) then return end
-
-        entity.RecoilKickADS = 0.01
-        entity.GameDeviationFactor = 0.01
-        entity.GameDeviationAccuracy = 0.01
-        if entity.AutoAimingConfig then
-            for _, range in ipairs({"OuterRange", "InnerRange"}) do
-                local cfg = entity.AutoAimingConfig[range]
-                if cfg then
-                    cfg.Speed = 2.0; cfg.RangeRate = 2.0; cfg.SpeedRate = 2.0
-                    cfg.RangeRateSight = 2.0; cfg.SpeedRateSight = 2.0
-                    cfg.CrouchRate = 2.0; cfg.ProneRate = 2.0; cfg.DyingRate = 0
-                    cfg.adsorbMaxRange = 200; cfg.adsorbMinRange = 20
-                    cfg.adsorbMinAttenuationDis = 100; cfg.adsorbMaxAttenuationDis = 8000
-                    cfg.adsorbActiveMinRange = 20
-                end
-            end
-            entity.AutoAimingConfig = entity.AutoAimingConfig
-        end
-        pcall(function()
-            local aimComp = char.BP_AutoAimingComponent_C or char.BP_AutoAimingComponent
-                or char.AutoAimingComponent
-            if slua.isValid(aimComp) and aimComp.Bones then
-                pcall(function() aimComp.Bones[0] = "neck_01" end)
-                pcall(function() aimComp.Bones[1] = "neck_01" end)
-                pcall(function() aimComp.Bones[2] = "neck_01" end)
-                pcall(function() aimComp.Bones:Set(0, "neck_01") end)
-                pcall(function() aimComp.Bones:Set(1, "neck_01") end)
-                pcall(function() aimComp.Bones:Set(2, "neck_01") end)
-            end
-        end)
-    end)
-end
-
 -- ============================================================================
 -- 11. LICENSE BOOTSTRAP
 -- ============================================================================
@@ -4373,7 +4274,6 @@ local OriginalCtor = BRPlayerCharacterBase.ctor
 function BRPlayerCharacterBase:ctor()
     if OriginalCtor then OriginalCtor(self) end
     self.AK_NativeESP_Ready = false
-    self._lastAimbotTime = 0
 end
 
 local OriginalPostConstruct = BRPlayerCharacterBase._PostConstruct
@@ -4482,15 +4382,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     end
                 end
             end
-        end
-
-        if _G.AK_GetVal("AIMBOT") == 1
-            and (os.clock() - self._lastAimbotTime) > 2.0 then
-            ApplyHardAimbot()
-            self._lastAimbotTime = os.clock()
-        end
-    end)
-end
+                end
+    end)  -- AddGameTimer کا end
+end      -- StartAdvancedSystems کا end
 
 -- ============================================================================
 -- 16. BOOTSTRAP
