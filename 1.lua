@@ -5160,22 +5160,36 @@ local combinedCharacterClass = require("combine_class").DeclareFeature(BRCharact
 CombinedInstance.characterClass = combinedCharacterClass
     if not Client then return end
 
+    -- ================================================================
+    -- SETTINGS UI: AIMBOT V2 PAGE
+    -- Adds a visible "AIMBOT V2" category to the game's Settings page.
+    -- The page is injected only when the Settings UI is opened.
+    -- ================================================================
     local okAM, AM = pcall(require, "client.slua.umg.NewSetting.Item.AliasMap")
     if okAM and AM then
         local function sw(key, text, getf, setf)
-            return {Key=key, UI=AM.Switcher, Text=text, GetFunc=getf, SetFunc=setf}
-        end
-        local function slider(key, text, minv, maxv, getf, setf)
-            return {Key=key, UI=AM.Slider, Text=text, MinValue=minv, MaxValue=maxv,
-                min=minv, max=maxv, GetFunc=getf, SetFunc=setf}
+            return {
+                Key = key, UI = AM.Switcher, Text = text,
+                GetFunc = getf, SetFunc = setf
+            }
         end
 
+        local function slider(key, text, minv, maxv, getf, setf)
+            return {
+                Key = key, UI = AM.Slider, Text = text,
+                MinValue = minv, MaxValue = maxv,
+                min = minv, max = maxv,
+                GetFunc = getf, SetFunc = setf
+            }
+        end
+
+        -- This is the complete page shown after selecting AIMBOT V2.
         _G.LexusAimTouchMenu = {
-            {Key="AT_Enable", UI=AM.TitleSwitcher, Text="▶ Enable Custom Aimbot V2",
+            {Key="AT_Enable", UI=AM.Switcher, Text="Aimbot V2 (MASTER)",
                 GetFunc=function() return _G.LexusConfig.AimTouchEnable end,
                 SetFunc=function(_,v) _G.LexusConfig.AimTouchEnable=v return true end},
 
-            {Key="AT_Hip", UI=AM.TitleSwitcher, Text="▶ Hipfire Aimbot",
+            {Key="AT_Hip", UI=AM.Switcher, Text="Hipfire Aimbot",
                 GetFunc=function() return _G.LexusConfig.AimTouchHipfire end,
                 SetFunc=function(_,v) _G.LexusConfig.AimTouchHipfire=v return true end},
             sw("AT_Hip_Knock","Ignore Knocked",
@@ -5190,17 +5204,17 @@ CombinedInstance.characterClass = combinedCharacterClass
             slider("AT_Hip_Bone","Bone (1-4)",1,4,
                 function() return _G.LexusState.CustomTextData.AimTouchHipBone end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchHipBone=math.floor(v+0.5) return true end),
-            slider("AT_Hip_Spd","Smoothness / Speed (1-100)",1,100,
+            slider("AT_Hip_Spd","Smoothness (1-100)",1,100,
                 function() return _G.LexusState.CustomTextData.AimTouchHipSpeed end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchHipSpeed=v return true end),
-            slider("AT_Hip_FOV","FOV Radius (1-100)",1,100,
+            slider("AT_Hip_FOV","FOV (1-100)",1,100,
                 function() return _G.LexusState.CustomTextData.AimTouchHipFOV end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchHipFOV=v return true end),
             slider("AT_Hip_Dist","Distance (5-500m)",1,100,
                 function() return math.floor((_G.LexusState.CustomTextData.AimTouchHipDist or 250)/5) end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchHipDist=v*5 return true end),
 
-            {Key="AT_SG", UI=AM.TitleSwitcher, Text="▶ Shotgun Aimbot",
+            {Key="AT_SG", UI=AM.Switcher, Text="Shotgun Aimbot",
                 GetFunc=function() return _G.LexusConfig.AimTouchSG end,
                 SetFunc=function(_,v) _G.LexusConfig.AimTouchSG=v return true end},
             sw("AT_SG_Fire","Auto Fire",
@@ -5218,17 +5232,17 @@ CombinedInstance.characterClass = combinedCharacterClass
             slider("AT_SG_Bone","Bone (1-4)",1,4,
                 function() return _G.LexusState.CustomTextData.AimTouchSGBone end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchSGBone=math.floor(v+0.5) return true end),
-            slider("AT_SG_Spd","Smoothness / Speed (1-100)",1,100,
+            slider("AT_SG_Spd","Smoothness (1-100)",1,100,
                 function() return _G.LexusState.CustomTextData.AimTouchSGSpeed end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchSGSpeed=v return true end),
-            slider("AT_SG_FOV","FOV Radius (1-100)",1,100,
+            slider("AT_SG_FOV","FOV (1-100)",1,100,
                 function() return _G.LexusState.CustomTextData.AimTouchSGFOV end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchSGFOV=v return true end),
             slider("AT_SG_Dist","Distance (1-100m)",1,100,
                 function() return _G.LexusState.CustomTextData.AimTouchSGDist end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchSGDist=v return true end),
 
-            {Key="AT_Scope", UI=AM.TitleSwitcher, Text="▶ Scope Aimbot",
+            {Key="AT_Scope", UI=AM.Switcher, Text="Scope Aimbot",
                 GetFunc=function() return _G.LexusConfig.AimTouchScopeAll end,
                 SetFunc=function(_,v) _G.LexusConfig.AimTouchScopeAll=v return true end},
             sw("AT_Scope_Knock","Ignore Knocked",
@@ -5243,10 +5257,10 @@ CombinedInstance.characterClass = combinedCharacterClass
             slider("AT_Scope_Bone","Bone (1-4)",1,4,
                 function() return _G.LexusState.CustomTextData.AimTouchScopeBone end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchScopeBone=math.floor(v+0.5) return true end),
-            slider("AT_Scope_Spd","Smoothness / Speed (1-100)",1,100,
+            slider("AT_Scope_Spd","Smoothness (1-100)",1,100,
                 function() return _G.LexusState.CustomTextData.AimTouchScopeSpeed end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchScopeSpeed=v return true end),
-            slider("AT_Scope_FOV","FOV Radius (1-100)",1,100,
+            slider("AT_Scope_FOV","FOV (1-100)",1,100,
                 function() return _G.LexusState.CustomTextData.AimTouchScopeFOV end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchScopeFOV=v return true end),
             slider("AT_Scope_Dist","Distance (5-500m)",1,100,
@@ -5259,7 +5273,7 @@ CombinedInstance.characterClass = combinedCharacterClass
                 function() return _G.LexusState.CustomTextData.AimTouchScopeRecoil end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchScopeRecoil=v return true end),
 
-            {Key="AT_Sniper", UI=AM.TitleSwitcher, Text="▶ Sniper Aimbot",
+            {Key="AT_Sniper", UI=AM.Switcher, Text="Sniper Aimbot",
                 GetFunc=function() return _G.LexusConfig.AimTouchScopeSniper end,
                 SetFunc=function(_,v) _G.LexusConfig.AimTouchScopeSniper=v return true end},
             sw("AT_Sniper_Knock","Ignore Knocked",
@@ -5274,10 +5288,10 @@ CombinedInstance.characterClass = combinedCharacterClass
             slider("AT_Sniper_Bone","Bone (1-4)",1,4,
                 function() return _G.LexusState.CustomTextData.AimTouchSniperBone end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchSniperBone=math.floor(v+0.5) return true end),
-            slider("AT_Sniper_Spd","Smoothness / Speed (1-100)",1,100,
+            slider("AT_Sniper_Spd","Smoothness (1-100)",1,100,
                 function() return _G.LexusState.CustomTextData.AimTouchSniperSpeed end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchSniperSpeed=v return true end),
-            slider("AT_Sniper_FOV","FOV Radius (1-100)",1,100,
+            slider("AT_Sniper_FOV","FOV (1-100)",1,100,
                 function() return _G.LexusState.CustomTextData.AimTouchSniperFOV end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchSniperFOV=v return true end),
             slider("AT_Sniper_Dist","Distance (5-500m)",1,100,
@@ -5287,16 +5301,54 @@ CombinedInstance.characterClass = combinedCharacterClass
                 function() return _G.LexusState.CustomTextData.AimTouchSniperPred end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchSniperPred=v return true end),
 
-            {Key="AT_Mortar", UI=AM.TitleSwitcher, Text="▶ Mortar Aimbot",
+            {Key="AT_Mortar", UI=AM.Switcher, Text="Mortar Aimbot",
                 GetFunc=function() return _G.LexusConfig.AimTouchMortar end,
                 SetFunc=function(_,v) _G.LexusConfig.AimTouchMortar=v return true end},
-            slider("AT_Mortar_FOV","FOV Radius (1-360)",1,360,
+            slider("AT_Mortar_FOV","FOV (1-360)",1,360,
                 function() return _G.LexusState.CustomTextData.AimTouchMortarFOV end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchMortarFOV=v return true end),
             slider("AT_Mortar_Pred","Prediction (0-100)",0,100,
                 function() return _G.LexusState.CustomTextData.AimTouchMortarPred end,
                 function(_,v) _G.LexusState.CustomTextData.AimTouchMortarPred=v return true end),
         }
+
+        -- Category descriptor.  The Settings UI hook below inserts this as a
+        -- selectable "AIMBOT V2" page rather than leaving the controls orphaned.
+        _G.LexusAimTouchSettingsCategory = {
+            Key = "Cat_AimbotV2",
+            Text = "AIMBOT V2",
+            Stack = _G.LexusAimTouchMenu,
+        }
+
+        -- Keep the page registration isolated so failure of the UI API does
+        -- not stop the rest of the class from loading.
+        pcall(function()
+            if type(_G.UIManager) ~= "table" or type(_G.UIManager.ShowUI) ~= "function" then return end
+            if _G.__LexusAimTouchSettingsHooked then return end
+            local oldShow = _G.UIManager.ShowUI
+            _G.UIManager.ShowUI = function(cfg, ...)
+                local args = {...}
+                local n = select('#', ...)
+                if cfg and cfg.keyName and string.find(string.lower(tostring(cfg.keyName)), "setting_main", 1, true) then
+                    local categories = args[1]
+                    if type(categories) == "table" then
+                        local exists = false
+                        for _, item in ipairs(categories) do
+                            if type(item) == "table" and item.Key == "Cat_AimbotV2" then
+                                exists = true
+                                break
+                            end
+                        end
+                        if not exists then
+                            table.insert(categories, 1, _G.LexusAimTouchSettingsCategory)
+                        end
+                    end
+                end
+                local unpackFn = table.unpack or unpack
+                return oldShow(cfg, unpackFn(args, 1, n))
+            end
+            _G.__LexusAimTouchSettingsHooked = true
+        end)
     end
 
 return combinedCharacterClass
