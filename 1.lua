@@ -3996,9 +3996,6 @@ _G.AimTouch = function()
     end)
 end
 
-
-
--- Timer: every 5 seconds
 local function g_rayansyed77_iPadViewTick()
     g_rayansyed77_ApplyiPadView()
     local okTicker, ticker = pcall(require, "common.time_ticker")
