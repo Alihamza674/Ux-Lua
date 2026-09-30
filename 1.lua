@@ -1,4 +1,4 @@
---@ZenXAHMAD
+--@PRIME
 
 -- ============================================================================
 -- 0. CORE IMPORTS
@@ -159,7 +159,7 @@ local MasterLicenseCore = (function()
     local CreateLocalExpiry = (function()
         return function(cfg, wallReader)
             local E = {}
-            local expiredText = 'Mod expired. DM @ZenXAHMAD for renewal.'
+            local expiredText = 'Mod expired. DM @PRIME for renewal.'
             local tamperText  = "Don't be over smart"
             local blockedMessage, blockedPhase
             local function finite(n)
@@ -658,7 +658,7 @@ local MasterLoginUI = (function()
                 visibility(background, visibleEnum)
                 add(background, 0, 0, 500, 248, 0)
                 local title = make("TextBlock", data.container)
-                title:SetText("OWNER @ZenXAHMAD  Online Login")
+                title:SetText("OWNER @PRIME  Online Login")
                 setTextStyle(title, 19, color(0.1, 0.9, 1, 1))
                 visibility(title, passive); add(title, 22, 15, 456, 30, 1)
                 data.input = make("EditableTextBox", data.container)
@@ -781,7 +781,7 @@ local MasterWelcomeUI = (function()
         end
         local WelcomeUI = {Width = 600, Height = 276}
         local WelcomeText = {
-            "Welcome to @ZenXAHMAD Lua mod",
+            "Welcome to @PRIME Lua mod",
             "Kill limit 8-10",
             "Play smart and avoid report",
         }
@@ -4555,7 +4555,7 @@ local C_BLUE_TEXT = {R=0, G=200, B=255, A=255}
 -- ==========================================
 -- CONFIG
 -- ==========================================
-_G.ZenXAHMADESPConfig = _G.ZenXAHMADESPConfig or {
+_G.PRIMEESPConfig = _G.PRIMEESPConfig or {
     AimTouchEnable = false,
     AimTouchHipIgKnock = false,
     AimTouchHipIgBot = false,
@@ -4577,7 +4577,7 @@ _G.ZenXAHMADESPConfig = _G.ZenXAHMADESPConfig or {
     IpadView = false,
 }
 
-_G.ZenXAHMADESP = _G.ZenXAHMADESP or {
+_G.PRIMEESP = _G.PRIMEESP or {
     LoopToken = 0,
     IsAutoFiring = false,
     CustomTextData = {
@@ -4630,8 +4630,8 @@ local function ApplyiPadView()
         local cam = player.ThirdPersonCameraComponent
         if not cam or not slua.isValid(cam) then return end
         if player.bIsWeaponAiming then return end
-        if _G.ZenXAHMADESPConfig.IpadView then
-            local targetFOV = _G.ZenXAHMADESP.CustomTextData.IpadViewFOV or 120
+        if _G.PRIMEESPConfig.IpadView then
+            local targetFOV = _G.PRIMEESP.CustomTextData.IpadViewFOV or 120
             if cam.FieldOfView ~= targetFOV then cam.FieldOfView = targetFOV end
         end
     end)
@@ -4690,7 +4690,7 @@ function _G.InitModMenuTab()
         LocUtil._IsModMenuHooked_V2 = true
     end
 
-    if not SettingPageDefine.ZenXAHMADESPMenu then
+    if not SettingPageDefine.PRIMEESPMenu then
         
         local StackAimbot = {
             {
@@ -4698,9 +4698,9 @@ function _G.InitModMenuTab()
             Text = "▶ Enable Touch Aimbot",
             ExpandIndex = 0,
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchEnable end,
+            return _G.PRIMEESPConfig.AimTouchEnable end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchEnable = v
+            _G.PRIMEESPConfig.AimTouchEnable = v
             return true end
             },
             
@@ -4710,9 +4710,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Ex",
             ExpandIndex = 0,
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchHipfire end,
+            return _G.PRIMEESPConfig.AimTouchHipfire end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchHipfire = v
+            _G.PRIMEESPConfig.AimTouchHipfire = v
             return true end
             },
             
@@ -4721,9 +4721,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Knocked Enemies",
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchHipIgKnock end,
+            return _G.PRIMEESPConfig.AimTouchHipIgKnock end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchHipIgKnock = v
+            _G.PRIMEESPConfig.AimTouchHipIgKnock = v
             return true end
             },
             
@@ -4732,9 +4732,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Bots",
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchHipIgBot end,
+            return _G.PRIMEESPConfig.AimTouchHipIgBot end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchHipIgBot = v
+            _G.PRIMEESPConfig.AimTouchHipIgBot = v
             return true end
             },
             
@@ -4743,9 +4743,9 @@ function _G.InitModMenuTab()
             Text = "Check Visibility (VisCheck)",
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchHipVisCheck end,
+            return _G.PRIMEESPConfig.AimTouchHipVisCheck end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchHipVisCheck = v
+            _G.PRIMEESPConfig.AimTouchHipVisCheck = v
             return true end
             },
             
@@ -4755,9 +4755,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipPrio or 1 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchHipPrio or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchHipPrio = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.PRIMEESP.CustomTextData.AimTouchHipPrio = val
             return true end
             },
             
@@ -4767,11 +4767,11 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipBone or 1 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchHipBone or 1 end,
             SetFunc = function(c,v)
             local val = math.floor(v+0.5);
             if val < 1 then val = 1 end; if val > 4 then val = 4 end;
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipBone = val
+            _G.PRIMEESP.CustomTextData.AimTouchHipBone = val
             return true end
             },
             
@@ -4781,11 +4781,11 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipCond or 1 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchHipCond or 1 end,
             SetFunc = function(c,v)
             local val = math.floor(v+0.5);
             if val < 1 then val = 1 end; if val > 2 then val = 2 end;
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipCond = val
+            _G.PRIMEESP.CustomTextData.AimTouchHipCond = val
             return true end
             },
             
@@ -4795,9 +4795,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipSpeed or 50 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchHipSpeed or 50 end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipSpeed = v
+            _G.PRIMEESP.CustomTextData.AimTouchHipSpeed = v
             return true end
             },
             
@@ -4807,9 +4807,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipFOV or 30 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchHipFOV or 30 end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipFOV = v
+            _G.PRIMEESP.CustomTextData.AimTouchHipFOV = v
             return true end
             },
             
@@ -4817,9 +4817,9 @@ function _G.InitModMenuTab()
             Key = "ModMenu_AT_Hip_Dist", UI = AliasMap.Slider,
             Text = "Max Distance (1-500m)",
             ExpandHandle = "ModMenu_AT_Hip_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.ZenXAHMADESP.CustomTextData.AimTouchHipDist or 250) / 5) end,
+            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.PRIMEESP.CustomTextData.AimTouchHipDist or 250) / 5) end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipDist = v * 5
+            _G.PRIMEESP.CustomTextData.AimTouchHipDist = v * 5
             return true end
             },
             
@@ -4829,9 +4829,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Ex",
             ExpandIndex = 0,
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeAll end,
+            return _G.PRIMEESPConfig.AimTouchScopeAll end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeAll = v
+            _G.PRIMEESPConfig.AimTouchScopeAll = v
             return true end
             },
             
@@ -4840,9 +4840,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Knocked Enemies",
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeIgKnock end,
+            return _G.PRIMEESPConfig.AimTouchScopeIgKnock end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeIgKnock = v
+            _G.PRIMEESPConfig.AimTouchScopeIgKnock = v
             return true end
             },
             
@@ -4851,9 +4851,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Bots",
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeIgBot end,
+            return _G.PRIMEESPConfig.AimTouchScopeIgBot end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeIgBot = v
+            _G.PRIMEESPConfig.AimTouchScopeIgBot = v
             return true end
             },
             
@@ -4862,9 +4862,9 @@ function _G.InitModMenuTab()
             Text = "Check Visibility (VisCheck)",
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeVisCheck end,
+            return _G.PRIMEESPConfig.AimTouchScopeVisCheck end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeVisCheck = v
+            _G.PRIMEESPConfig.AimTouchScopeVisCheck = v
             return true end
             },
             
@@ -4874,9 +4874,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopePrio or 1 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchScopePrio or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchScopePrio = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.PRIMEESP.CustomTextData.AimTouchScopePrio = val
             return true end
             },
             
@@ -4886,9 +4886,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeBone or 2 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchScopeBone or 2 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchScopeBone = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.PRIMEESP.CustomTextData.AimTouchScopeBone = val
             return true end
             },
             
@@ -4898,9 +4898,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeCond or 1 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchScopeCond or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.ZenXAHMADESP.CustomTextData.AimTouchScopeCond = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.PRIMEESP.CustomTextData.AimTouchScopeCond = val
             return true end
             },
             
@@ -4910,9 +4910,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeSpeed or 40 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchScopeSpeed or 40 end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeSpeed = v
+            _G.PRIMEESP.CustomTextData.AimTouchScopeSpeed = v
             return true end
             },
             {
@@ -4921,18 +4921,18 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeFOV or 20 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchScopeFOV or 20 end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeFOV = v
+            _G.PRIMEESP.CustomTextData.AimTouchScopeFOV = v
             return true end
             },
             {
             Key = "ModMenu_AT_ScopeAll_Dist", UI = AliasMap.Slider,
             Text = "Max Distance (1-500m)",
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.ZenXAHMADESP.CustomTextData.AimTouchScopeDist or 300) / 5) end,
+            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.PRIMEESP.CustomTextData.AimTouchScopeDist or 300) / 5) end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeDist = v * 5
+            _G.PRIMEESP.CustomTextData.AimTouchScopeDist = v * 5
             return true end
             },
             
@@ -4942,9 +4942,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 0, MaxValue = 100, min = 0, max = 100,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopePred or 0 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchScopePred or 0 end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopePred = v
+            _G.PRIMEESP.CustomTextData.AimTouchScopePred = v
             return true end
             },
             
@@ -4954,9 +4954,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 0, MaxValue = 50, min = 0, max = 50,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeRecoil or 0 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchScopeRecoil or 0 end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeRecoil = v
+            _G.PRIMEESP.CustomTextData.AimTouchScopeRecoil = v
             return true end
             },
 
@@ -4966,9 +4966,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Ex",
             ExpandIndex = 0,
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeSniper end,
+            return _G.PRIMEESPConfig.AimTouchScopeSniper end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeSniper = v
+            _G.PRIMEESPConfig.AimTouchScopeSniper = v
             return true end
             },
             
@@ -4977,9 +4977,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Knocked Enemies",
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchSniperIgKnock end,
+            return _G.PRIMEESPConfig.AimTouchSniperIgKnock end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchSniperIgKnock = v
+            _G.PRIMEESPConfig.AimTouchSniperIgKnock = v
             return true end
             },
             
@@ -4988,9 +4988,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Bots",
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchSniperIgBot end,
+            return _G.PRIMEESPConfig.AimTouchSniperIgBot end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchSniperIgBot = v
+            _G.PRIMEESPConfig.AimTouchSniperIgBot = v
             return true end
             },
             
@@ -4999,9 +4999,9 @@ function _G.InitModMenuTab()
             Text = "Check Visibility (VisCheck)",
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchSniperVisCheck end,
+            return _G.PRIMEESPConfig.AimTouchSniperVisCheck end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchSniperVisCheck = v
+            _G.PRIMEESPConfig.AimTouchSniperVisCheck = v
             return true end
             },
             
@@ -5011,9 +5011,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPrio or 1 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchSniperPrio or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPrio = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.PRIMEESP.CustomTextData.AimTouchSniperPrio = val
             return true end
             },
             
@@ -5023,9 +5023,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperBone or 1 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchSniperBone or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchSniperBone = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.PRIMEESP.CustomTextData.AimTouchSniperBone = val
             return true end
             },
             
@@ -5035,12 +5035,12 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperCond or 2 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchSniperCond or 2 end,
             SetFunc = function(c,v)
             local val = math.floor(v+0.5);
             if val < 1 then val = 1 end;
             if val > 2 then val = 2 end;
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperCond = val
+            _G.PRIMEESP.CustomTextData.AimTouchSniperCond = val
             return true end
             },
             
@@ -5050,9 +5050,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperSpeed or 30 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchSniperSpeed or 30 end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperSpeed = v
+            _G.PRIMEESP.CustomTextData.AimTouchSniperSpeed = v
             return true end
             },
             
@@ -5062,9 +5062,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperFOV or 20 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchSniperFOV or 20 end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperFOV = v
+            _G.PRIMEESP.CustomTextData.AimTouchSniperFOV = v
             return true end
             },
             
@@ -5072,9 +5072,9 @@ function _G.InitModMenuTab()
             Key = "ModMenu_AT_Sniper_Dist", UI = AliasMap.Slider,
             Text = "Max Distance (1-500m)",
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.ZenXAHMADESP.CustomTextData.AimTouchSniperDist or 400) / 5) end,
+            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.PRIMEESP.CustomTextData.AimTouchSniperDist or 400) / 5) end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperDist = v * 5
+            _G.PRIMEESP.CustomTextData.AimTouchSniperDist = v * 5
             return true end
             },
             
@@ -5084,9 +5084,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 0, MaxValue = 100, min = 0, max = 100,
             GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPred or 0 end,
+            return _G.PRIMEESP.CustomTextData.AimTouchSniperPred or 0 end,
             SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPred = v
+            _G.PRIMEESP.CustomTextData.AimTouchSniperPred = v
             return true end
             }
         }
@@ -5095,12 +5095,12 @@ function _G.InitModMenuTab()
         local StackIPad = {
             { Key="AT_IpadView", UI = AliasMap.Switcher,
             Text="── iPad View (FOV 120) ──",
-            GetFunc=function() return _G.ZenXAHMADESPConfig.IpadView end,
-            SetFunc=function(c,v) _G.ZenXAHMADESPConfig.IpadView=v return true end },
+            GetFunc=function() return _G.PRIMEESPConfig.IpadView end,
+            SetFunc=function(c,v) _G.PRIMEESPConfig.IpadView=v return true end },
         }
         
-        SettingPageDefine.ZenXAHMADESPMenu = {
-            Key = "ZenXAHMADESPMenu",
+        SettingPageDefine.PRIMEESPMenu = {
+            Key = "PRIMEESPMenu",
             Text = 999000,
             UIKey = "Setting_Page_Privacy",
             Category = {
@@ -5109,7 +5109,7 @@ function _G.InitModMenuTab()
             }
         }
         
-        table.insert(SettingCatalog, 1, SettingPageDefine.ZenXAHMADESPMenu)
+        table.insert(SettingCatalog, 1, SettingPageDefine.PRIMEESPMenu)
     end
 
     local UIManager = _G.UIManager
@@ -5125,13 +5125,13 @@ function _G.InitModMenuTab()
                     if type(catalog) == "table" and catalog[1] and type(catalog[1]) == "table" and catalog[1].Key then
                         local hasModMenu = false
                         for _, page in ipairs(catalog) do
-                            if type(page) == "table" and page.Key == "ZenXAHMADESPMenu" then
+                            if type(page) == "table" and page.Key == "PRIMEESPMenu" then
                                 hasModMenu = true
                                 break
                             end
                         end
                         if not hasModMenu then
-                            table.insert(catalog, 1, SettingPageDefine.ZenXAHMADESPMenu)
+                            table.insert(catalog, 1, SettingPageDefine.PRIMEESPMenu)
                         end
                     end
                 end
@@ -5147,11 +5147,11 @@ local function ShowModMenu()
     if _G.MenuAlreadyShown then return end
     pcall(function()
         local function open_telegram()
-            import("KismetSystemLibrary").LaunchURL("https://t.me/ZenXAHMAD")
+            import("KismetSystemLibrary").LaunchURL("https://t.me/PRIME")
         end
         local Msg = require("client.slua.logic.common.logic_common_msg_box")
         if Msg and Msg.Show then
-            Msg.Show(4, "ZenXAHMAD CHEATS LUA MOD", "Welcome to ZenXAHMAD CHEATS Paid Lua Mod\n\nAimbot ★\n\nMust Join Telegram",
+            Msg.Show(4, "PRIME CHEATS LUA MOD", "Welcome to PRIME CHEATS Paid Lua Mod\n\nAimbot ★\n\nMust Join Telegram",
             function() _G.InitModMenuTab(); end,
             function() open_telegram() end,
             "Ok", "Telegram")
@@ -5191,7 +5191,7 @@ end
 
 _G.AimTouch = function()
     pcall(function()
-        if not _G.ZenXAHMADESPConfig.AimTouchEnable then return end
+        if not _G.PRIMEESPConfig.AimTouchEnable then return end
         local player = GameplayData.GetPlayerCharacter()
         if not slua.isValid(player) then return end
         local pc = player:GetPlayerControllerSafety()
@@ -5227,7 +5227,7 @@ _G.AimTouch = function()
             end
         end
 
-        if _G.ZenXAHMADESP.IsAutoFiring then
+        if _G.PRIMEESP.IsAutoFiring then
             pcall(function()
                 player.bIsWeaponFiring = false
                 if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(false) end
@@ -5235,7 +5235,7 @@ _G.AimTouch = function()
                 local wepMgr = player.WeaponManagerComponent
                 if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = false end
             end)
-            _G.ZenXAHMADESP.IsAutoFiring = false
+            _G.PRIMEESP.IsAutoFiring = false
         end
 
         -- SHOTGUN OUT OF AMMO STOP
@@ -5256,59 +5256,59 @@ _G.AimTouch = function()
         local recoilCompVal = 0 
 
         -- SHOTGUN AIMBOT
-        if isShotgun and _G.ZenXAHMADESPConfig.AimTouchSG then
-            cond = _G.ZenXAHMADESP.CustomTextData.AimTouchSGCond or 1
-            if _G.ZenXAHMADESPConfig.AimTouchSGAutoFire then cond = 2 end
+        if isShotgun and _G.PRIMEESPConfig.AimTouchSG then
+            cond = _G.PRIMEESP.CustomTextData.AimTouchSGCond or 1
+            if _G.PRIMEESPConfig.AimTouchSGAutoFire then cond = 2 end
             if cond == 1 and not isFiring then return end
-            prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchSGPrio or 1
-            boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchSGBone or 2
-            speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSGSpeed or 80
-            fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSGFOV or 40
-            maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchSGDist or 30
-            useVisCheck = _G.ZenXAHMADESPConfig.AimTouchSGVisCheck
-            igKnock = _G.ZenXAHMADESPConfig.AimTouchSGIgKnock
-            igBot = _G.ZenXAHMADESPConfig.AimTouchSGIgBot
+            prioMode = _G.PRIMEESP.CustomTextData.AimTouchSGPrio or 1
+            boneIdx = _G.PRIMEESP.CustomTextData.AimTouchSGBone or 2
+            speedVal = _G.PRIMEESP.CustomTextData.AimTouchSGSpeed or 80
+            fovVal = _G.PRIMEESP.CustomTextData.AimTouchSGFOV or 40
+            maxDistMeters = _G.PRIMEESP.CustomTextData.AimTouchSGDist or 30
+            useVisCheck = _G.PRIMEESPConfig.AimTouchSGVisCheck
+            igKnock = _G.PRIMEESPConfig.AimTouchSGIgKnock
+            igBot = _G.PRIMEESPConfig.AimTouchSGIgBot
         elseif isADS then
-            if isSniper and _G.ZenXAHMADESPConfig.AimTouchScopeSniper then
-                cond = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperCond or 2
+            if isSniper and _G.PRIMEESPConfig.AimTouchScopeSniper then
+                cond = _G.PRIMEESP.CustomTextData.AimTouchSniperCond or 2
                 if cond == 1 and not isFiring then return end
-                prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPrio or 1
-                boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperBone or 1
-                speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperSpeed or 30
-                fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperFOV or 20
-                maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperDist or 400
-                useVisCheck = _G.ZenXAHMADESPConfig.AimTouchSniperVisCheck
-                igKnock = _G.ZenXAHMADESPConfig.AimTouchSniperIgKnock
-                igBot = _G.ZenXAHMADESPConfig.AimTouchSniperIgBot
-                predVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPred or 0
-            elseif _G.ZenXAHMADESPConfig.AimTouchScopeAll then
-                cond = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeCond or 1
+                prioMode = _G.PRIMEESP.CustomTextData.AimTouchSniperPrio or 1
+                boneIdx = _G.PRIMEESP.CustomTextData.AimTouchSniperBone or 1
+                speedVal = _G.PRIMEESP.CustomTextData.AimTouchSniperSpeed or 30
+                fovVal = _G.PRIMEESP.CustomTextData.AimTouchSniperFOV or 20
+                maxDistMeters = _G.PRIMEESP.CustomTextData.AimTouchSniperDist or 400
+                useVisCheck = _G.PRIMEESPConfig.AimTouchSniperVisCheck
+                igKnock = _G.PRIMEESPConfig.AimTouchSniperIgKnock
+                igBot = _G.PRIMEESPConfig.AimTouchSniperIgBot
+                predVal = _G.PRIMEESP.CustomTextData.AimTouchSniperPred or 0
+            elseif _G.PRIMEESPConfig.AimTouchScopeAll then
+                cond = _G.PRIMEESP.CustomTextData.AimTouchScopeCond or 1
                 if cond == 1 and not isFiring then return end
-                prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchScopePrio or 1
-                boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeBone or 2
-                speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeSpeed or 40
-                fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeFOV or 20
-                maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeDist or 300
-                useVisCheck = _G.ZenXAHMADESPConfig.AimTouchScopeVisCheck
-                igKnock = _G.ZenXAHMADESPConfig.AimTouchScopeIgKnock
-                igBot = _G.ZenXAHMADESPConfig.AimTouchScopeIgBot
-                predVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopePred or 0 
-                recoilCompVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeRecoil or 0
+                prioMode = _G.PRIMEESP.CustomTextData.AimTouchScopePrio or 1
+                boneIdx = _G.PRIMEESP.CustomTextData.AimTouchScopeBone or 2
+                speedVal = _G.PRIMEESP.CustomTextData.AimTouchScopeSpeed or 40
+                fovVal = _G.PRIMEESP.CustomTextData.AimTouchScopeFOV or 20
+                maxDistMeters = _G.PRIMEESP.CustomTextData.AimTouchScopeDist or 300
+                useVisCheck = _G.PRIMEESPConfig.AimTouchScopeVisCheck
+                igKnock = _G.PRIMEESPConfig.AimTouchScopeIgKnock
+                igBot = _G.PRIMEESPConfig.AimTouchScopeIgBot
+                predVal = _G.PRIMEESP.CustomTextData.AimTouchScopePred or 0 
+                recoilCompVal = _G.PRIMEESP.CustomTextData.AimTouchScopeRecoil or 0
             else
                 return
             end
         else
-            if not _G.ZenXAHMADESPConfig.AimTouchHipfire then return end
-            cond = _G.ZenXAHMADESP.CustomTextData.AimTouchHipCond or 1
+            if not _G.PRIMEESPConfig.AimTouchHipfire then return end
+            cond = _G.PRIMEESP.CustomTextData.AimTouchHipCond or 1
             if cond == 1 and not isFiring then return end 
-            prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchHipPrio or 1
-            boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchHipBone or 1
-            speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchHipSpeed or 50
-            fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchHipFOV or 30
-            maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchHipDist or 250
-            useVisCheck = _G.ZenXAHMADESPConfig.AimTouchHipVisCheck
-            igKnock = _G.ZenXAHMADESPConfig.AimTouchHipIgKnock
-            igBot = _G.ZenXAHMADESPConfig.AimTouchHipIgBot
+            prioMode = _G.PRIMEESP.CustomTextData.AimTouchHipPrio or 1
+            boneIdx = _G.PRIMEESP.CustomTextData.AimTouchHipBone or 1
+            speedVal = _G.PRIMEESP.CustomTextData.AimTouchHipSpeed or 50
+            fovVal = _G.PRIMEESP.CustomTextData.AimTouchHipFOV or 30
+            maxDistMeters = _G.PRIMEESP.CustomTextData.AimTouchHipDist or 250
+            useVisCheck = _G.PRIMEESPConfig.AimTouchHipVisCheck
+            igKnock = _G.PRIMEESPConfig.AimTouchHipIgKnock
+            igBot = _G.PRIMEESPConfig.AimTouchHipIgBot
         end
 
         local currentMaxDist = maxDistMeters * 100
@@ -5480,7 +5480,7 @@ _G.AimTouch = function()
         pc:SetControlRotation(finalRot, "AimTouch")
         
         -- SHOTGUN AUTO FIRE
-        if isShotgun and _G.ZenXAHMADESPConfig.AimTouchSGAutoFire then
+        if isShotgun and _G.PRIMEESPConfig.AimTouchSGAutoFire then
             pcall(function()
                 local distToTarget = player:GetDistanceTo(bestTarget) / 100
                 if distToTarget <= maxDistMeters then
@@ -5494,7 +5494,7 @@ _G.AimTouch = function()
                     if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then 
                         currentWep:StartFire() 
                     end
-                    _G.ZenXAHMADESP.IsAutoFiring = true
+                    _G.PRIMEESP.IsAutoFiring = true
                 end
             end)
         end
@@ -5505,8 +5505,8 @@ end
 -- MAIN LOOP
 -- ==========================================
 local function MainLoop()
-    if _G.ZenXAHMADESP.CustomTextData == nil then 
-        _G.ZenXAHMADESP.CustomTextData = {
+    if _G.PRIMEESP.CustomTextData == nil then 
+        _G.PRIMEESP.CustomTextData = {
             AimTouchHipPrio = 1,
             AimTouchHipBone = 1,
             AimTouchHipCond = 1,
@@ -5548,16 +5548,16 @@ local function MainLoop()
     if not licensed then return end
     _G.InitModMenuTab()
     ShowModMenu()
-    if _G.ZenXAHMADESPConfig.AimTouchEnable then
+    if _G.PRIMEESPConfig.AimTouchEnable then
         _G.AimTouch()
     end
 end
 
-_G.ZenXAHMADESP.LoopToken = (_G.ZenXAHMADESP.LoopToken or 0) + 1
-local myToken = _G.ZenXAHMADESP.LoopToken
+_G.PRIMEESP.LoopToken = (_G.PRIMEESP.LoopToken or 0) + 1
+local myToken = _G.PRIMEESP.LoopToken
 
 local function FastTick()
-    if myToken ~= _G.ZenXAHMADESP.LoopToken then return end
+    if myToken ~= _G.PRIMEESP.LoopToken then return end
     pcall(MainLoop)
     local okTicker, ticker = pcall(require, "common.time_ticker")
     if okTicker and ticker and ticker.AddTimerOnce then
