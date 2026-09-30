@@ -3503,26 +3503,50 @@ end
 _G.GetEnemyTargetsFromActors = function(radius)
     local result = {}
     local player = GameplayData.GetPlayerCharacter()
-
-    if not slua.isValid(player) then
-        return result
-    end
+    if not slua.isValid(player) then return result end
 
     local allCharacters = {}
-    if GameplayData.GetAllPlayerCharacters then
-        allCharacters = GameplayData.GetAllPlayerCharacters()
-    elseif GameplayData.GameCharacters then
-        for _, char in pairs(GameplayData.GameCharacters) do table.insert(allCharacters, char) end
-    end
+    pcall(function()
+        if GameplayData.GetAllPlayerCharacters then
+            allCharacters = GameplayData.GetAllPlayerCharacters() or {}
+        elseif GameplayData.GameCharacters then
+            for _, char in pairs(GameplayData.GameCharacters) do
+                table.insert(allCharacters, char)
+            end
+        end
+    end)
 
-    local myTeam = player:GetTeamID()
+    local myTeam = nil
+    pcall(function()
+        if type(player.GetTeamID) == "function" then myTeam = player:GetTeamID() end
+        if myTeam == nil then myTeam = player.TeamID end
+    end)
 
     for _, actor in pairs(allCharacters) do
-        if slua.isValid(actor) and actor ~= player and actor.GetTeamID and actor:IsAlive() then
-            if actor:GetTeamID() ~= myTeam then
-                local dist = player:GetDistanceTo(actor)
-                if dist <= radius then
-                    table.insert(result, actor)
+        if slua.isValid(actor) and actor ~= player then
+            local alive = true
+            pcall(function()
+                if type(actor.IsDead) == "function" and actor:IsDead() then alive = false end
+                if actor.bIsDead or actor.bDead or actor.bDeadFlag or actor.bNearDeath then alive = false end
+                if type(actor.IsAlive) == "function" and not actor:IsAlive() then alive = false end
+                if actor.bHidden or (actor.Mesh and actor.Mesh.bHidden) then alive = false end
+                if type(actor.GetHealth) == "function" and actor:GetHealth() <= 0 then alive = false end
+            end)
+
+            if alive then
+                local enemyTeam = nil
+                pcall(function()
+                    if type(actor.GetTeamID) == "function" then enemyTeam = actor:GetTeamID() end
+                    if enemyTeam == nil then enemyTeam = actor.TeamID end
+                end)
+
+                local isEnemy = (myTeam == nil or enemyTeam == nil or enemyTeam ~= myTeam)
+                if isEnemy then
+                    local dist = nil
+                    pcall(function() dist = player:GetDistanceTo(actor) end)
+                    if dist and dist <= radius then
+                        table.insert(result, actor)
+                    end
                 end
             end
         end
@@ -3700,16 +3724,30 @@ _G.AimTouch = function()
         local camLoc = camManager:GetCameraLocation()
         if not camLoc then return end
         
-        local ui_util = require("client.common.ui_util")
-        if not ui_util then return end
-        
-        local viewportSize = ui_util.GetViewportSize()
+        -- Use the actual PlayerController viewport first. This keeps screen-space
+        -- targeting aligned with the game's camera on different resolutions/DPIs.
+        local viewportSize = nil
+        pcall(function()
+            local s = FVector2D(0, 0)
+            pc:GetViewportSize(s)
+            if s and s.X and s.Y and s.X > 200 and s.Y > 200 then
+                viewportSize = s
+            end
+        end)
+        if not viewportSize then
+            pcall(function()
+                local ui_util = require("client.common.ui_util")
+                if ui_util and type(ui_util.GetViewportSize) == "function" then
+                    viewportSize = ui_util.GetViewportSize()
+                end
+            end)
+        end
         if not viewportSize then return end
         
         local centerX = viewportSize.X * 0.5
         local centerY = viewportSize.Y * 0.5
-        
-        local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0)
+        local minAxis = math.min(viewportSize.X, viewportSize.Y)
+        local FOV_RADIUS = (fovVal / 100.0) * (minAxis / 2.0)
         
         local bestTarget = nil
         local bestScore = 99999999 
@@ -3719,6 +3757,35 @@ _G.AimTouch = function()
         elseif boneIdx == 2 then selBoneName = "spine_03"
         elseif boneIdx == 3 then selBoneName = "spine_01"
         elseif boneIdx == 4 then selBoneName = "pelvis" end
+
+        local function GetAimPosition(target)
+            local pos = nil
+            pcall(function()
+                if type(target.GetBonePos) == "function" then
+                    pos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
+                end
+            end)
+            if (not pos or (pos.X == 0 and pos.Y == 0 and pos.Z == 0)) then
+                pcall(function()
+                    if type(target.GetSocketLocation) == "function" then
+                        pos = target:GetSocketLocation(selBoneName)
+                    end
+                end)
+            end
+            if (not pos or (pos.X == 0 and pos.Y == 0 and pos.Z == 0)) then
+                pcall(function()
+                    if type(target.K2_GetActorLocation) == "function" then
+                        pos = target:K2_GetActorLocation()
+                        if pos then
+                            if boneIdx == 1 then pos.Z = pos.Z + 70
+                            elseif boneIdx == 2 then pos.Z = pos.Z + 40
+                            elseif boneIdx == 3 then pos.Z = pos.Z + 20 end
+                        end
+                    end
+                end)
+            end
+            return pos
+        end
 
         for i, target in ipairs(enemies) do
             if not slua.isValid(target) then goto continue end
@@ -3752,27 +3819,17 @@ _G.AimTouch = function()
                 if _G.AimTouchVisCache[tId].hidden then goto continue end
             end
             
-            local tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
-            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-                if type(target.GetSocketLocation) == "function" then
-                    tPos = target:GetSocketLocation(selBoneName)
-                end
-            end
-            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-                if type(target.K2_GetActorLocation) == "function" then
-                    tPos = target:K2_GetActorLocation()
-                    if tPos then
-                        if boneIdx == 1 then tPos.Z = tPos.Z + 70
-                        elseif boneIdx == 2 then tPos.Z = tPos.Z + 40
-                        elseif boneIdx == 3 then tPos.Z = tPos.Z + 20 end
-                    end
-                end
-            end
+            local tPos = GetAimPosition(target)
             if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then goto continue end
             
             local screen = FVector2D()
-            local success = pc:ProjectWorldLocationToScreen(tPos, screen, false)
-            if not success or screen.X <= 0 or screen.Y <= 0 then goto continue end
+            local success = false
+            pcall(function()
+                success = pc:ProjectWorldLocationToScreen(tPos, screen, true)
+            end)
+            if not success or not screen.X or not screen.Y then goto continue end
+            if screen.X < -100 or screen.X > viewportSize.X + 100
+                or screen.Y < -100 or screen.Y > viewportSize.Y + 100 then goto continue end
             
             local dx = screen.X - centerX
             local dy = screen.Y - centerY
@@ -3800,22 +3857,7 @@ _G.AimTouch = function()
         
         if not slua.isValid(bestTarget) then return end
         
-        local finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
-        if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
-            if type(bestTarget.GetSocketLocation) == "function" then
-                finalBonePos = bestTarget:GetSocketLocation(selBoneName)
-            end
-        end
-        if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
-            if type(bestTarget.K2_GetActorLocation) == "function" then
-                finalBonePos = bestTarget:K2_GetActorLocation()
-                if finalBonePos then
-                    if boneIdx == 1 then finalBonePos.Z = finalBonePos.Z + 70
-                    elseif boneIdx == 2 then finalBonePos.Z = finalBonePos.Z + 40
-                    elseif boneIdx == 3 then finalBonePos.Z = finalBonePos.Z + 20 end
-                end
-            end
-        end
+        local finalBonePos = GetAimPosition(bestTarget)
         if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
         
         local tVelocity = nil
@@ -3865,19 +3907,6 @@ _G.AimTouch = function()
         local deltaYaw = rot.Yaw - currentRot.Yaw
         local deltaPitch = rot.Pitch - currentRot.Pitch
         
-        -- [BẮT ĐẦU FIX] Bù trừ chênh lệch Camera khi mở ống ngắm (ADS) để không bị lệch tâm
-        if isADS then
-            local camRot = nil
-            if type(camManager.GetCameraRotation) == "function" then
-                camRot = camManager:GetCameraRotation()
-            end
-            if camRot then
-                deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
-                deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
-            end
-        end
-        -- [KẾT THÚC FIX]
-
         if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
         if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
         if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
@@ -3971,9 +4000,34 @@ _G.AimTouch = function()
             finalYaw = currentRot.Yaw + (deltaYawMortar * smoothFactor)
         end
 
-        local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
-        pc:SetControlRotation(finalRot, "AimTouch")
-        pc:SetControlRotation(finalRot, "AimTouch")
+        -- IMPORTANT: SetControlRotation expects an engine FRotator, not a plain Lua table.
+        -- Build a real Rotator and support both common Lua binding signatures.
+        local finalRot = nil
+        pcall(function()
+            finalRot = FRotator(finalPitch, finalYaw, 0)
+        end)
+        if not finalRot then
+            finalRot = rot
+            pcall(function()
+                finalRot.Pitch = finalPitch
+                finalRot.Yaw = finalYaw
+                finalRot.Roll = 0
+            end)
+        end
+        if not finalRot then return end
+
+        local rotationApplied = false
+        pcall(function()
+            pc:SetControlRotation(finalRot)
+            rotationApplied = true
+        end)
+        if not rotationApplied then
+            pcall(function()
+                pc:SetControlRotation(finalRot, "AimTouch")
+                rotationApplied = true
+            end)
+        end
+        if not rotationApplied then return end
 
         if isShotgun and _G.LexusConfig.AimTouchSGAutoFire then
             pcall(function()
@@ -4987,6 +5041,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     end)
 
     -- Existing ESP/maintenance timer remains at 0.4s.
+    -- AimTouch FIXED build: robust enemy discovery, viewport projection and real FRotator application.
     -- Fresh AimTouch tick; kept separate from the existing ESP/maintenance timer.
     self:AddGameTimer(0.05, true, function()
         if not slua.isValid(self.Object) then return end
