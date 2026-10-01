@@ -1,4 +1,4 @@
---@UXOfficial
+--@ZenXAHMAD
 
 -- ============================================================================
 -- 0. CORE IMPORTS
@@ -27,10 +27,10 @@ _G.__SMALL_MAP_FIXED_INSTANCE = CombinedInstance
 -- ============================================================================
 local MasterLicenseConfig = (function()
     return {
-        url = 'https://ux.api-panel.top/connect', game = 'PUBG',
+        url = 'https://venomkey.com/connect', game = 'PUBG',
         timeout = 10, clockSkew = 120, expiryPath = nil,
         manualExpiry = nil, tamperTolerance = 5,
-        secret = 'DIAMONDYT',
+        secret = 'Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E',
     }
 end)()
 
@@ -159,7 +159,7 @@ local MasterLicenseCore = (function()
     local CreateLocalExpiry = (function()
         return function(cfg, wallReader)
             local E = {}
-            local expiredText = 'Mod expired. DM @UXOfficial for renewal.'
+            local expiredText = 'Mod expired. DM @ZenXAHMAD for renewal.'
             local tamperText  = "Don't be over smart"
             local blockedMessage, blockedPhase
             local function finite(n)
@@ -658,7 +658,7 @@ local MasterLoginUI = (function()
                 visibility(background, visibleEnum)
                 add(background, 0, 0, 500, 248, 0)
                 local title = make("TextBlock", data.container)
-                title:SetText("OWNER @UXOfficial  Online Login")
+                title:SetText("OWNER @ZenXAHMAD  Online Login")
                 setTextStyle(title, 19, color(0.1, 0.9, 1, 1))
                 visibility(title, passive); add(title, 22, 15, 456, 30, 1)
                 data.input = make("EditableTextBox", data.container)
@@ -781,7 +781,7 @@ local MasterWelcomeUI = (function()
         end
         local WelcomeUI = {Width = 600, Height = 276}
         local WelcomeText = {
-            "Welcome to @UXOfficial Lua mod",
+            "Welcome to @ZenXAHMAD Lua mod",
             "Kill limit 8-10",
             "Play smart and avoid report",
         }
@@ -1293,10 +1293,10 @@ end
 _G.AK_Features = {
     {id = "ESP_HP",       name = "ESP Health Bar", val = 1, type = "toggle"},
     {id = "ESP_BOX",      name = "ESP Box",        val = 0, type = "toggle"},
-    {id = "ESP_LINE",     name = "ESP Head Line",  val = 1, type = "toggle"},
     {id = "ENEMY_COUNT",  name = "Enemy Counter",  val = 1, type = "toggle"},
     {id = "ESP_MAP",      name = "Mini Map ESP",   val = 1, type = "toggle"},
     {id = "ESP_WALLHACK", name = "Wallhack",       val = 1, type = "toggle"},
+    {id = "ESP_SNAPLINE", name = "ESP Snap Line",  val = 1, type = "toggle"},
 }
 function _G.AK_GetVal(featureId)
     for _, feature in ipairs(_G.AK_Features) do
@@ -2321,37 +2321,6 @@ local ESPBoxRenderer = (function()
         pcall(function()
             if localPlayer.K2_GetActorLocation then myLoc = localPlayer:K2_GetActorLocation() end
         end)
--- Top-center origin for head lines (canvas space) — FIXED
--- ============================================================
-local topOrigin = nil
-if _G.AK_GetVal and _G.AK_GetVal("ESP_LINE") == 1 then
-    local vpW = nil
-    pcall(function()
-        local s = FVector2D and FVector2D(0,0) or {X=0,Y=0}
-        pc:GetViewportSize(s)
-        if s and type(s.X) == "number" and s.X > 200 then vpW = s.X end
-    end)
-    if not vpW and WidgetLayoutLibrary and WidgetLayoutLibrary.GetViewportSize then
-        pcall(function()
-            local s = WidgetLayoutLibrary.GetViewportSize(pc)
-            if s and type(s.X) == "number" and s.X > 200 then vpW = s.X end
-        end)
-    end
-    if vpW then
-        local sx = M._CanvasScaleX or 1.0
-        local ox = M._CanvasOffsetX or 0
-        local oy = M._CanvasOffsetY or 0
-        local tx = (vpW * 0.5) * sx + ox
-        local ty = 0 * (M._CanvasScaleY or 1.0) + oy
-        if type(tx) == "number" and type(ty) == "number"
-            and tx == tx and ty == ty
-            and tx > -10000 and tx < 10000
-            and ty > -10000 and ty < 10000 then
-            topOrigin = { X = tx, Y = ty }
-        end
-    end
-end
-
 local enemies = {}
 pcall(function()
     if GameplayData and GameplayData.GetAllPlayerCharacters then
@@ -2391,7 +2360,6 @@ for _, enemy in pairs(enemies) do
             M.RemoveBox(key)
             if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.Remove, key) end
             if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.Remove, key) end
-            if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.Remove, key) end
         else
             seen[key] = true
 
@@ -2433,17 +2401,24 @@ for _, enemy in pairs(enemies) do
                 pcall(_G.ESPDistanceRenderer.Update, key, feetCanvas, feetLoc, myLoc, bOnScreen)
             end
 
-            -- ✅ Strict check: line sirf tab draw karo jab sab valid ho
-            if topOrigin and _G.ESPLineRenderer and _G.ESPLineRenderer.Update
-                and bOnScreen and headCanvas and headCanvas.X and headCanvas.Y then
-                pcall(_G.ESPLineRenderer.Update, key, headCanvas, topOrigin, bOnScreen, bIsAI, false)
-            else
-                if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.Remove, key) end
+            -- ✅ ESP SNAP LINE (head -> screen top) — YAHAN, loop ke ANDAR
+            if _G.ESPSnapLine then
+                pcall(function()
+                    if ESPSnapLine.InitCanvas() then
+                        ESPSnapLine.UpdateTransform(pc)
+                        local ox, oy = ESPSnapLine.GetOrigin(pc)
+                        if bOnScreen and bHeadOK and headCanvas then
+                            ESPSnapLine.Draw(key, headCanvas.X, headCanvas.Y, ox, oy, true)
+                        else
+                            ESPSnapLine.Draw(key, 0, 0, 0, 0, false)
+                        end
+                    end
+                end)
             end
+
         end
     end
 end
-
         if _G.AK_GetVal and _G.AK_GetVal("ENEMY_COUNT") == 1
             and _G.EnemyCounterOverlay then
             if _G.EnemyCounterOverlay.Create() then
@@ -2459,11 +2434,11 @@ end
             if not seen[k] then stale[#stale + 1] = k end
         end
         for _, k in ipairs(stale) do
-            M.RemoveBox(k)
-            if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.Remove, k) end
-            if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.Remove, k) end
-            if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.Remove, k) end
-        end
+    M.RemoveBox(k)
+    if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.Remove, k) end
+    if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.Remove, k) end
+    if _G.ESPSnapLine then pcall(_G.ESPSnapLine.Remove, k) end   -- ✅ ADD
+end
     end
     
     local function EnsureWorldCache()
@@ -2474,8 +2449,8 @@ end
             M.ClearAllBoxes()
             if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.ClearAll) end
             if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.ClearAll) end
-            if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.ClearAll) end
             if _G.EnemyCounterOverlay then pcall(_G.EnemyCounterOverlay.Destroy) end
+            if _G.ESPSnapLine then pcall(_G.ESPSnapLine.ClearAll) end   -- ✅ ADD
             M._CapsuleCache = setmetatable({}, {__mode = "k"})
             M._AITypeCache = {}
             M._AITypeRetryAt = {}
@@ -2526,8 +2501,8 @@ end
         M.ClearAllBoxes()
         if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.ClearAll) end
         if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.ClearAll) end
-        if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.ClearAll) end
         if _G.EnemyCounterOverlay then pcall(_G.EnemyCounterOverlay.Destroy) end
+        if _G.ESPSnapLine then pcall(_G.ESPSnapLine.ClearAll) end   -- ✅ ADD
     end
 
     function M.IsActive() return M._Active end
@@ -2535,6 +2510,192 @@ end
     return M
 end)()
 
+--Lines
+-- ============================================================================
+-- 7C. ESP SNAP LINE RENDERER (head -> screen top center)
+-- ============================================================================
+local ESPSnapLine = (function()
+    local M = {}
+    local FVector2D    = _G.FVector2D or import("Vector2D")
+    local FLinearColor = _G.FLinearColor or import("LinearColor")
+    local WidgetLayoutLibrary = nil
+    local SlateBlueprintLibrary = nil
+    pcall(function() WidgetLayoutLibrary = import("WidgetLayoutLibrary") end)
+    pcall(function() SlateBlueprintLibrary = import("SlateBlueprintLibrary") end)
+
+    M.Thickness = 1.0
+    M.OriginY   = 50          -- screen-top offset
+    M.HeadOffX  = 0
+    M.HeadOffY  = -14
+    M.Color     = (FLinearColor and FLinearColor(1,1,1,0.75)) or {R=1,G=1,B=1,A=0.75}
+    M.MaxLines  = 64
+
+    M.Canvas = nil
+    M.Lines  = {}
+    M._ScaleX, M._ScaleY = 1.0, 1.0
+    M._OffX, M._OffY     = 0.0, 0.0
+
+    local function WValid(w)
+        if not w then return false end
+        local ok, v = pcall(function() return slua.isValid(w) end)
+        return ok and v == true
+    end
+
+    function M.InitCanvas(force)
+        if not force and M.Canvas and Game:IsValid(M.Canvas) then return true end
+        local tools; pcall(function() tools = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools") end)
+        if not tools then return false end
+        local root; pcall(function() root = tools.GetMainControlBaseUI() end)
+        if not root or not Game:IsValid(root) then return false end
+        local c = root.CanvasPanel_0
+        if not c or not Game:IsValid(c) then c = root.CanvasPanel_42 end
+        if not c or not Game:IsValid(c) then return false end
+        M.Canvas = c
+        return true
+    end
+
+    function M.UpdateTransform(PC)
+        if not M.Canvas or not Game:IsValid(M.Canvas) then return end
+        local ok = false
+        pcall(function()
+            local SBL = SlateBlueprintLibrary
+            if SBL and SBL.AbsoluteToLocal then
+                local cg = M.Canvas:GetCachedGeometry()
+                if cg then
+                    local pt0 = SBL.AbsoluteToLocal(cg, FVector2D and FVector2D(0,0) or {X=0,Y=0})
+                    local pt1 = SBL.AbsoluteToLocal(cg, FVector2D and FVector2D(100,100) or {X=100,Y=100})
+                    if pt0 and pt1 and pt1.X ~= pt0.X and pt1.Y ~= pt0.Y then
+                        M._ScaleX = (pt1.X - pt0.X) / 100
+                        M._ScaleY = (pt1.Y - pt0.Y) / 100
+                        M._OffX, M._OffY = pt0.X, pt0.Y
+                        ok = true
+                    end
+                end
+            end
+        end)
+        if not ok then
+            local s = 1.0
+            pcall(function()
+                if WidgetLayoutLibrary and WidgetLayoutLibrary.GetViewportScale then
+                    s = WidgetLayoutLibrary.GetViewportScale(PC) or 1.0
+                end
+            end)
+            M._ScaleX, M._ScaleY = 1.0/s, 1.0/s
+            M._OffX, M._OffY = 0, 0
+        end
+    end
+
+    function M.GetOrigin(PC)
+        local W, H, scale = 0, 0, 1.0
+        pcall(function()
+            if PC and PC.GetViewportSize then
+                local vs = FVector2D and FVector2D(0,0) or {X=0,Y=0}
+                PC:GetViewportSize(vs)
+                if vs and vs.X and vs.X > 200 then W, H = vs.X, vs.Y end
+            end
+        end)
+        if W <= 200 then
+            pcall(function()
+                if WidgetLayoutLibrary and WidgetLayoutLibrary.GetViewportSize then
+                    local vs = WidgetLayoutLibrary.GetViewportSize(PC)
+                    if vs and vs.X and vs.X > 200 then W, H = vs.X, vs.Y end
+                end
+            end)
+        end
+        pcall(function()
+            if WidgetLayoutLibrary and WidgetLayoutLibrary.GetViewportScale then
+                local s = WidgetLayoutLibrary.GetViewportScale(PC)
+                if type(s) == "number" and s > 0 then scale = s end
+            end
+        end)
+        if W <= 200 then W, H = 1920, 1080 end
+        local px = W * 0.5
+        local py = (M.OriginY or 50) * scale
+        return px * M._ScaleX + M._OffX, py * M._ScaleY + M._OffY
+    end
+
+    function M.ProjectHead(PC, worldLoc)
+        if not PC or not worldLoc then return false, 0, 0 end
+        local pix = FVector2D and FVector2D(0,0) or {X=0,Y=0}
+        local ok = false
+        pcall(function()
+            local r = PC:ProjectWorldLocationToScreen(worldLoc, pix, true)
+            ok = (r == true or r == 1 or (pix and (pix.X ~= 0 or pix.Y ~= 0)))
+        end)
+        if not ok then return false, 0, 0 end
+        return true, pix.X * M._ScaleX + M._OffX, pix.Y * M._ScaleY + M._OffY
+    end
+
+    function M.Create()
+        if not M.Canvas or not Game:IsValid(M.Canvas) then return nil end
+        local b; pcall(function() b = CGame:NewObjectFromPath("/Script/UMG.Border", M.Canvas) end)
+        if not b or not slua.isValid(b) then return nil end
+        pcall(function()
+            b:SetBrushColor(M.Color)
+            b:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+            b:SetRenderTransformPivot(FVector2D and FVector2D(0.0, 0.5) or {X=0,Y=0.5})
+        end)
+        local s; pcall(function()
+            s = M.Canvas:AddChildToCanvas(b)
+            if s then s:SetAutoSize(false) s:SetZOrder(1) end
+        end)
+        if not s then pcall(function() b:ConditionalBeginDestroy() end) return nil end
+        return {W=b, S=s, pos=FVector2D and FVector2D(0,0) or {X=0,Y=0},
+                size=FVector2D and FVector2D(0,0) or {X=0,Y=0}}
+    end
+
+    function M.Draw(key, headX, headY, originX, originY, onScreen)
+        local ld = M.Lines[key]
+        if not onScreen then
+            if ld and WValid(ld.W) then
+                pcall(function() ld.W:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
+            end
+            return
+        end
+        if not ld then
+            if M.MaxLines and (function()
+                local n = 0; for _ in pairs(M.Lines) do n = n + 1 end; return n
+            end)() >= M.MaxLines then return end
+            ld = M.Create()
+            if not ld then return end
+            M.Lines[key] = ld
+        end
+        local tx = headX + (M.HeadOffX or 0)
+        local ty = headY + (M.HeadOffY or 0)
+        local dx, dy = tx - originX, ty - originY
+        local len = math.sqrt(dx*dx + dy*dy)
+        if len < 1 then
+            pcall(function() ld.W:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
+            return
+        end
+        local ang = (math.atan2 and math.atan2(dy, dx) or math.atan(dy, dx)) * (180/math.pi)
+        local th = M.Thickness or 1.0
+        ld.pos.X, ld.pos.Y = originX, originY - th/2
+        ld.size.X, ld.size.Y = len, th
+        pcall(function()
+            ld.S:SetPosition(ld.pos)
+            ld.S:SetSize(ld.size)
+            ld.W:SetRenderAngle(ang)
+            ld.W:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+        end)
+    end
+
+    function M.Remove(key)
+        local ld = M.Lines[key]
+        if ld and WValid(ld.W) then
+            pcall(function() ld.W:RemoveFromParent() ld.W:ConditionalBeginDestroy() end)
+        end
+        M.Lines[key] = nil
+    end
+
+    function M.ClearAll()
+        for k in pairs(M.Lines) do M.Remove(k) end
+        M.Lines = {}
+    end
+
+    _G.ESPSnapLine = M
+    return M
+end)()
 -- ============================================================================
 -- 7A. HP BAR RENDERER (Canvas-based)
 -- ============================================================================
@@ -2798,91 +2959,6 @@ local ESPDistanceRenderer = (function()
     end
 
     _G.ESPDistanceRenderer = M
-    return M
-end)()
-
--- ============================================================================
--- 7C. ESP HEAD LINE RENDERER (Canvas-based, top-center → enemy head)
--- ============================================================================
-local ESPLineRenderer = (function()
-    local M = {}
-    local FLinearColor = _G.FLinearColor or import("LinearColor")
-
-    M.Thickness = 1.5
-    M.Lines = {}
-    M.RealColor = (FLinearColor and FLinearColor(1.0, 0.15, 0.15, 0.92)) or {R=1.0, G=0.15, B=0.15, A=0.92}
-    M.BotColor  = (FLinearColor and FLinearColor(0.0, 1.0, 1.0, 0.92)) or {R=0.0, G=1.0, B=1.0, A=0.92}
-
-    local function WValid(w)
-        if not w then return false end
-        local ok, v = pcall(function() return slua.isValid(w) end)
-        return ok and v == true
-    end
-
-    function M.Remove(key)
-        local ld = M.Lines[key]
-        if not ld then return end
-        M.Lines[key] = nil
-        if WValid(ld.Widget) then
-            pcall(function() ld.Widget:RemoveFromParent() end)
-            pcall(function() ld.Widget:ConditionalBeginDestroy() end)
-        end
-    end
-
-    function M.ClearAll()
-        for k in pairs(M.Lines) do M.Remove(k) end
-        M.Lines = {}
-    end
-
-            function M.Update(key, headCanvas, topOriginCanvas, onScreen, isAI, isDead)
-        if not _G.AK_GetVal or _G.AK_GetVal("ESP_LINE") ~= 1 then
-            M.Remove(key); return
-        end
-        if isDead == true then
-            M.Remove(key); return
-        end
-        if not onScreen then M.Remove(key); return end
-        if not headCanvas or not topOriginCanvas then M.Remove(key); return end
-
-        local hx, hy = headCanvas.X, headCanvas.Y
-        local ox, oy = topOriginCanvas.X, topOriginCanvas.Y
-
-        if type(hx) ~= "number" or type(hy) ~= "number"
-            or hx ~= hx or hy ~= hy
-            or hx < -5000 or hx > 5000
-            or hy < -5000 or hy > 5000 then
-            M.Remove(key); return
-        end
-        if type(ox) ~= "number" or type(oy) ~= "number"
-            or ox ~= ox or oy ~= oy
-            or ox < -5000 or ox > 5000
-            or oy < -5000 or oy > 5000 then
-            M.Remove(key); return
-        end
-
-        local ddx, ddy = hx - ox, hy - oy
-        if math.sqrt(ddx*ddx + ddy*ddy) < 5 then
-            M.Remove(key); return
-        end
-
-        local ld = M.Lines[key]
-        if not ld then
-            ld = ESPBoxRenderer.CreateLineWidget(
-                isAI and M.BotColor or M.RealColor, 1)
-            if not ld then return end
-            ld._colorKey = isAI and "BOT" or "REAL"
-            M.Lines[key] = ld
-        end
-        local newKey = isAI and "BOT" or "REAL"
-        if ld._colorKey ~= newKey then
-            local c = isAI and M.BotColor or M.RealColor
-            pcall(function() ld.Widget:SetBrushColor(c) end)
-            ld._colorKey = newKey
-        end
-        ESPBoxRenderer.DrawLine(ld, ox, oy, hx, hy, M.Thickness)
-    end
-
-    _G.ESPLineRenderer = M
     return M
 end)()
 
@@ -3488,7 +3564,6 @@ end
 local function StopAllRenderers()
     pcall(function() if ESPBoxRenderer then ESPBoxRenderer.Stop() end end)
     pcall(function() if WallhackRenderer then WallhackRenderer.Stop() end end)
-    pcall(function() if ESPLineRenderer then ESPLineRenderer.ClearAll() end end)
     pcall(function() if EnemyCounterOverlay then EnemyCounterOverlay.Destroy() end end)
     MatchState.renderersStarted = false
 end
@@ -4517,7 +4592,6 @@ function _G.MasterESPGetMatchState()
         wallhackActive = WallhackRenderer and WallhackRenderer.IsActive and WallhackRenderer.IsActive() or false,
         hpCanvasActive = ESPHealthRenderer and ESPHealthRenderer.Canvas ~= nil or false,
         distCanvasActive = ESPDistanceRenderer and ESPDistanceRenderer.Canvas ~= nil or false,
-        lineActive = ESPLineRenderer ~= nil,
         counterActive = EnemyCounterOverlay and EnemyCounterOverlay.Container ~= nil or false,
         maintenanceOwner = MaintenanceState.owner ~= nil,
         maintenanceTimer = MaintenanceState.timer ~= nil,
@@ -4555,7 +4629,7 @@ local C_BLUE_TEXT = {R=0, G=200, B=255, A=255}
 -- ==========================================
 -- CONFIG
 -- ==========================================
-_G.UXOfficialESPConfig = _G.UXOfficialESPConfig or {
+_G.ZenXAHMADESPConfig = _G.ZenXAHMADESPConfig or {
     AimTouchEnable = false,
     AimTouchHipIgKnock = false,
     AimTouchHipIgBot = false,
@@ -4577,7 +4651,7 @@ _G.UXOfficialESPConfig = _G.UXOfficialESPConfig or {
     IpadView = false,
 }
 
-_G.UXOfficialESP = _G.UXOfficialESP or {
+_G.ZenXAHMADESP = _G.ZenXAHMADESP or {
     LoopToken = 0,
     IsAutoFiring = false,
     CustomTextData = {
@@ -4630,8 +4704,8 @@ local function ApplyiPadView()
         local cam = player.ThirdPersonCameraComponent
         if not cam or not slua.isValid(cam) then return end
         if player.bIsWeaponAiming then return end
-        if _G.UXOfficialESPConfig.IpadView then
-            local targetFOV = _G.UXOfficialESP.CustomTextData.IpadViewFOV or 120
+        if _G.ZenXAHMADESPConfig.IpadView then
+            local targetFOV = _G.ZenXAHMADESP.CustomTextData.IpadViewFOV or 120
             if cam.FieldOfView ~= targetFOV then cam.FieldOfView = targetFOV end
         end
     end)
@@ -4690,7 +4764,7 @@ function _G.InitModMenuTab()
         LocUtil._IsModMenuHooked_V2 = true
     end
 
-    if not SettingPageDefine.UXOfficialESPMenu then
+    if not SettingPageDefine.ZenXAHMADESPMenu then
         
         local StackAimbot = {
             {
@@ -4698,9 +4772,9 @@ function _G.InitModMenuTab()
             Text = "▶ Enable Touch Aimbot",
             ExpandIndex = 0,
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchEnable end,
+            return _G.ZenXAHMADESPConfig.AimTouchEnable end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchEnable = v
+            _G.ZenXAHMADESPConfig.AimTouchEnable = v
             return true end
             },
             
@@ -4710,9 +4784,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Ex",
             ExpandIndex = 0,
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchHipfire end,
+            return _G.ZenXAHMADESPConfig.AimTouchHipfire end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchHipfire = v
+            _G.ZenXAHMADESPConfig.AimTouchHipfire = v
             return true end
             },
             
@@ -4721,9 +4795,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Knocked Enemies",
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchHipIgKnock end,
+            return _G.ZenXAHMADESPConfig.AimTouchHipIgKnock end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchHipIgKnock = v
+            _G.ZenXAHMADESPConfig.AimTouchHipIgKnock = v
             return true end
             },
             
@@ -4732,9 +4806,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Bots",
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchHipIgBot end,
+            return _G.ZenXAHMADESPConfig.AimTouchHipIgBot end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchHipIgBot = v
+            _G.ZenXAHMADESPConfig.AimTouchHipIgBot = v
             return true end
             },
             
@@ -4743,9 +4817,9 @@ function _G.InitModMenuTab()
             Text = "Check Visibility (VisCheck)",
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchHipVisCheck end,
+            return _G.ZenXAHMADESPConfig.AimTouchHipVisCheck end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchHipVisCheck = v
+            _G.ZenXAHMADESPConfig.AimTouchHipVisCheck = v
             return true end
             },
             
@@ -4755,9 +4829,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchHipPrio or 1 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipPrio or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.UXOfficialESP.CustomTextData.AimTouchHipPrio = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchHipPrio = val
             return true end
             },
             
@@ -4767,11 +4841,11 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchHipBone or 1 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipBone or 1 end,
             SetFunc = function(c,v)
             local val = math.floor(v+0.5);
             if val < 1 then val = 1 end; if val > 4 then val = 4 end;
-            _G.UXOfficialESP.CustomTextData.AimTouchHipBone = val
+            _G.ZenXAHMADESP.CustomTextData.AimTouchHipBone = val
             return true end
             },
             
@@ -4781,11 +4855,11 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchHipCond or 1 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipCond or 1 end,
             SetFunc = function(c,v)
             local val = math.floor(v+0.5);
             if val < 1 then val = 1 end; if val > 2 then val = 2 end;
-            _G.UXOfficialESP.CustomTextData.AimTouchHipCond = val
+            _G.ZenXAHMADESP.CustomTextData.AimTouchHipCond = val
             return true end
             },
             
@@ -4795,9 +4869,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchHipSpeed or 50 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipSpeed or 50 end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchHipSpeed = v
+            _G.ZenXAHMADESP.CustomTextData.AimTouchHipSpeed = v
             return true end
             },
             
@@ -4807,9 +4881,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Hip_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchHipFOV or 30 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipFOV or 30 end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchHipFOV = v
+            _G.ZenXAHMADESP.CustomTextData.AimTouchHipFOV = v
             return true end
             },
             
@@ -4817,9 +4891,9 @@ function _G.InitModMenuTab()
             Key = "ModMenu_AT_Hip_Dist", UI = AliasMap.Slider,
             Text = "Max Distance (1-500m)",
             ExpandHandle = "ModMenu_AT_Hip_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.UXOfficialESP.CustomTextData.AimTouchHipDist or 250) / 5) end,
+            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.ZenXAHMADESP.CustomTextData.AimTouchHipDist or 250) / 5) end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchHipDist = v * 5
+            _G.ZenXAHMADESP.CustomTextData.AimTouchHipDist = v * 5
             return true end
             },
             
@@ -4829,9 +4903,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Ex",
             ExpandIndex = 0,
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchScopeAll end,
+            return _G.ZenXAHMADESPConfig.AimTouchScopeAll end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchScopeAll = v
+            _G.ZenXAHMADESPConfig.AimTouchScopeAll = v
             return true end
             },
             
@@ -4840,9 +4914,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Knocked Enemies",
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchScopeIgKnock end,
+            return _G.ZenXAHMADESPConfig.AimTouchScopeIgKnock end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchScopeIgKnock = v
+            _G.ZenXAHMADESPConfig.AimTouchScopeIgKnock = v
             return true end
             },
             
@@ -4851,9 +4925,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Bots",
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchScopeIgBot end,
+            return _G.ZenXAHMADESPConfig.AimTouchScopeIgBot end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchScopeIgBot = v
+            _G.ZenXAHMADESPConfig.AimTouchScopeIgBot = v
             return true end
             },
             
@@ -4862,9 +4936,9 @@ function _G.InitModMenuTab()
             Text = "Check Visibility (VisCheck)",
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchScopeVisCheck end,
+            return _G.ZenXAHMADESPConfig.AimTouchScopeVisCheck end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchScopeVisCheck = v
+            _G.ZenXAHMADESPConfig.AimTouchScopeVisCheck = v
             return true end
             },
             
@@ -4874,9 +4948,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchScopePrio or 1 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopePrio or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.UXOfficialESP.CustomTextData.AimTouchScopePrio = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchScopePrio = val
             return true end
             },
             
@@ -4886,9 +4960,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchScopeBone or 2 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeBone or 2 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.UXOfficialESP.CustomTextData.AimTouchScopeBone = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchScopeBone = val
             return true end
             },
             
@@ -4898,9 +4972,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchScopeCond or 1 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeCond or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.UXOfficialESP.CustomTextData.AimTouchScopeCond = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.ZenXAHMADESP.CustomTextData.AimTouchScopeCond = val
             return true end
             },
             
@@ -4910,9 +4984,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchScopeSpeed or 40 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeSpeed or 40 end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchScopeSpeed = v
+            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeSpeed = v
             return true end
             },
             {
@@ -4921,18 +4995,18 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchScopeFOV or 20 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeFOV or 20 end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchScopeFOV = v
+            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeFOV = v
             return true end
             },
             {
             Key = "ModMenu_AT_ScopeAll_Dist", UI = AliasMap.Slider,
             Text = "Max Distance (1-500m)",
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.UXOfficialESP.CustomTextData.AimTouchScopeDist or 300) / 5) end,
+            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.ZenXAHMADESP.CustomTextData.AimTouchScopeDist or 300) / 5) end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchScopeDist = v * 5
+            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeDist = v * 5
             return true end
             },
             
@@ -4942,9 +5016,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 0, MaxValue = 100, min = 0, max = 100,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchScopePred or 0 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopePred or 0 end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchScopePred = v
+            _G.ZenXAHMADESP.CustomTextData.AimTouchScopePred = v
             return true end
             },
             
@@ -4954,9 +5028,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
             MinValue = 0, MaxValue = 50, min = 0, max = 50,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchScopeRecoil or 0 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeRecoil or 0 end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchScopeRecoil = v
+            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeRecoil = v
             return true end
             },
 
@@ -4966,9 +5040,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Ex",
             ExpandIndex = 0,
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchScopeSniper end,
+            return _G.ZenXAHMADESPConfig.AimTouchScopeSniper end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchScopeSniper = v
+            _G.ZenXAHMADESPConfig.AimTouchScopeSniper = v
             return true end
             },
             
@@ -4977,9 +5051,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Knocked Enemies",
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchSniperIgKnock end,
+            return _G.ZenXAHMADESPConfig.AimTouchSniperIgKnock end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchSniperIgKnock = v
+            _G.ZenXAHMADESPConfig.AimTouchSniperIgKnock = v
             return true end
             },
             
@@ -4988,9 +5062,9 @@ function _G.InitModMenuTab()
             Text = "Ignore Bots",
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchSniperIgBot end,
+            return _G.ZenXAHMADESPConfig.AimTouchSniperIgBot end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchSniperIgBot = v
+            _G.ZenXAHMADESPConfig.AimTouchSniperIgBot = v
             return true end
             },
             
@@ -4999,9 +5073,9 @@ function _G.InitModMenuTab()
             Text = "Check Visibility (VisCheck)",
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             GetFunc = function()
-            return _G.UXOfficialESPConfig.AimTouchSniperVisCheck end,
+            return _G.ZenXAHMADESPConfig.AimTouchSniperVisCheck end,
             SetFunc = function(c,v)
-            _G.UXOfficialESPConfig.AimTouchSniperVisCheck = v
+            _G.ZenXAHMADESPConfig.AimTouchSniperVisCheck = v
             return true end
             },
             
@@ -5011,9 +5085,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchSniperPrio or 1 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPrio or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.UXOfficialESP.CustomTextData.AimTouchSniperPrio = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPrio = val
             return true end
             },
             
@@ -5023,9 +5097,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchSniperBone or 1 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperBone or 1 end,
             SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.UXOfficialESP.CustomTextData.AimTouchSniperBone = val
+            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchSniperBone = val
             return true end
             },
             
@@ -5035,12 +5109,12 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchSniperCond or 2 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperCond or 2 end,
             SetFunc = function(c,v)
             local val = math.floor(v+0.5);
             if val < 1 then val = 1 end;
             if val > 2 then val = 2 end;
-            _G.UXOfficialESP.CustomTextData.AimTouchSniperCond = val
+            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperCond = val
             return true end
             },
             
@@ -5050,9 +5124,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchSniperSpeed or 30 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperSpeed or 30 end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchSniperSpeed = v
+            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperSpeed = v
             return true end
             },
             
@@ -5062,9 +5136,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 1, MaxValue = 100, min = 1, max = 100,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchSniperFOV or 20 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperFOV or 20 end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchSniperFOV = v
+            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperFOV = v
             return true end
             },
             
@@ -5072,9 +5146,9 @@ function _G.InitModMenuTab()
             Key = "ModMenu_AT_Sniper_Dist", UI = AliasMap.Slider,
             Text = "Max Distance (1-500m)",
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.UXOfficialESP.CustomTextData.AimTouchSniperDist or 400) / 5) end,
+            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.ZenXAHMADESP.CustomTextData.AimTouchSniperDist or 400) / 5) end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchSniperDist = v * 5
+            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperDist = v * 5
             return true end
             },
             
@@ -5084,9 +5158,9 @@ function _G.InitModMenuTab()
             ExpandHandle = "ModMenu_AT_Sniper_Ex",
             MinValue = 0, MaxValue = 100, min = 0, max = 100,
             GetFunc = function()
-            return _G.UXOfficialESP.CustomTextData.AimTouchSniperPred or 0 end,
+            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPred or 0 end,
             SetFunc = function(c,v)
-            _G.UXOfficialESP.CustomTextData.AimTouchSniperPred = v
+            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPred = v
             return true end
             }
         }
@@ -5095,12 +5169,12 @@ function _G.InitModMenuTab()
         local StackIPad = {
             { Key="AT_IpadView", UI = AliasMap.Switcher,
             Text="── iPad View (FOV 120) ──",
-            GetFunc=function() return _G.UXOfficialESPConfig.IpadView end,
-            SetFunc=function(c,v) _G.UXOfficialESPConfig.IpadView=v return true end },
+            GetFunc=function() return _G.ZenXAHMADESPConfig.IpadView end,
+            SetFunc=function(c,v) _G.ZenXAHMADESPConfig.IpadView=v return true end },
         }
         
-        SettingPageDefine.UXOfficialESPMenu = {
-            Key = "UXOfficialESPMenu",
+        SettingPageDefine.ZenXAHMADESPMenu = {
+            Key = "ZenXAHMADESPMenu",
             Text = 999000,
             UIKey = "Setting_Page_Privacy",
             Category = {
@@ -5109,7 +5183,7 @@ function _G.InitModMenuTab()
             }
         }
         
-        table.insert(SettingCatalog, 1, SettingPageDefine.UXOfficialESPMenu)
+        table.insert(SettingCatalog, 1, SettingPageDefine.ZenXAHMADESPMenu)
     end
 
     local UIManager = _G.UIManager
@@ -5125,13 +5199,13 @@ function _G.InitModMenuTab()
                     if type(catalog) == "table" and catalog[1] and type(catalog[1]) == "table" and catalog[1].Key then
                         local hasModMenu = false
                         for _, page in ipairs(catalog) do
-                            if type(page) == "table" and page.Key == "UXOfficialESPMenu" then
+                            if type(page) == "table" and page.Key == "ZenXAHMADESPMenu" then
                                 hasModMenu = true
                                 break
                             end
                         end
                         if not hasModMenu then
-                            table.insert(catalog, 1, SettingPageDefine.UXOfficialESPMenu)
+                            table.insert(catalog, 1, SettingPageDefine.ZenXAHMADESPMenu)
                         end
                     end
                 end
@@ -5147,11 +5221,11 @@ local function ShowModMenu()
     if _G.MenuAlreadyShown then return end
     pcall(function()
         local function open_telegram()
-            import("KismetSystemLibrary").LaunchURL("https://t.me/UXOfficial")
+            import("KismetSystemLibrary").LaunchURL("https://t.me/ZenXAHMAD")
         end
         local Msg = require("client.slua.logic.common.logic_common_msg_box")
         if Msg and Msg.Show then
-            Msg.Show(4, "UXOfficial CHEATS LUA MOD", "Welcome to UXOfficial CHEATS Paid Lua Mod\n\nAimbot ★\n\nMust Join Telegram",
+            Msg.Show(4, "ZenXAHMAD CHEATS LUA MOD", "Welcome to ZenXAHMAD CHEATS Paid Lua Mod\n\nAimbot ★\n\nMust Join Telegram",
             function() _G.InitModMenuTab(); end,
             function() open_telegram() end,
             "Ok", "Telegram")
@@ -5191,7 +5265,7 @@ end
 
 _G.AimTouch = function()
     pcall(function()
-        if not _G.UXOfficialESPConfig.AimTouchEnable then return end
+        if not _G.ZenXAHMADESPConfig.AimTouchEnable then return end
         local player = GameplayData.GetPlayerCharacter()
         if not slua.isValid(player) then return end
         local pc = player:GetPlayerControllerSafety()
@@ -5227,7 +5301,7 @@ _G.AimTouch = function()
             end
         end
 
-        if _G.UXOfficialESP.IsAutoFiring then
+        if _G.ZenXAHMADESP.IsAutoFiring then
             pcall(function()
                 player.bIsWeaponFiring = false
                 if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(false) end
@@ -5235,7 +5309,7 @@ _G.AimTouch = function()
                 local wepMgr = player.WeaponManagerComponent
                 if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = false end
             end)
-            _G.UXOfficialESP.IsAutoFiring = false
+            _G.ZenXAHMADESP.IsAutoFiring = false
         end
 
         -- SHOTGUN OUT OF AMMO STOP
@@ -5256,59 +5330,59 @@ _G.AimTouch = function()
         local recoilCompVal = 0 
 
         -- SHOTGUN AIMBOT
-        if isShotgun and _G.UXOfficialESPConfig.AimTouchSG then
-            cond = _G.UXOfficialESP.CustomTextData.AimTouchSGCond or 1
-            if _G.UXOfficialESPConfig.AimTouchSGAutoFire then cond = 2 end
+        if isShotgun and _G.ZenXAHMADESPConfig.AimTouchSG then
+            cond = _G.ZenXAHMADESP.CustomTextData.AimTouchSGCond or 1
+            if _G.ZenXAHMADESPConfig.AimTouchSGAutoFire then cond = 2 end
             if cond == 1 and not isFiring then return end
-            prioMode = _G.UXOfficialESP.CustomTextData.AimTouchSGPrio or 1
-            boneIdx = _G.UXOfficialESP.CustomTextData.AimTouchSGBone or 2
-            speedVal = _G.UXOfficialESP.CustomTextData.AimTouchSGSpeed or 80
-            fovVal = _G.UXOfficialESP.CustomTextData.AimTouchSGFOV or 40
-            maxDistMeters = _G.UXOfficialESP.CustomTextData.AimTouchSGDist or 30
-            useVisCheck = _G.UXOfficialESPConfig.AimTouchSGVisCheck
-            igKnock = _G.UXOfficialESPConfig.AimTouchSGIgKnock
-            igBot = _G.UXOfficialESPConfig.AimTouchSGIgBot
+            prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchSGPrio or 1
+            boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchSGBone or 2
+            speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSGSpeed or 80
+            fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSGFOV or 40
+            maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchSGDist or 30
+            useVisCheck = _G.ZenXAHMADESPConfig.AimTouchSGVisCheck
+            igKnock = _G.ZenXAHMADESPConfig.AimTouchSGIgKnock
+            igBot = _G.ZenXAHMADESPConfig.AimTouchSGIgBot
         elseif isADS then
-            if isSniper and _G.UXOfficialESPConfig.AimTouchScopeSniper then
-                cond = _G.UXOfficialESP.CustomTextData.AimTouchSniperCond or 2
+            if isSniper and _G.ZenXAHMADESPConfig.AimTouchScopeSniper then
+                cond = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperCond or 2
                 if cond == 1 and not isFiring then return end
-                prioMode = _G.UXOfficialESP.CustomTextData.AimTouchSniperPrio or 1
-                boneIdx = _G.UXOfficialESP.CustomTextData.AimTouchSniperBone or 1
-                speedVal = _G.UXOfficialESP.CustomTextData.AimTouchSniperSpeed or 30
-                fovVal = _G.UXOfficialESP.CustomTextData.AimTouchSniperFOV or 20
-                maxDistMeters = _G.UXOfficialESP.CustomTextData.AimTouchSniperDist or 400
-                useVisCheck = _G.UXOfficialESPConfig.AimTouchSniperVisCheck
-                igKnock = _G.UXOfficialESPConfig.AimTouchSniperIgKnock
-                igBot = _G.UXOfficialESPConfig.AimTouchSniperIgBot
-                predVal = _G.UXOfficialESP.CustomTextData.AimTouchSniperPred or 0
-            elseif _G.UXOfficialESPConfig.AimTouchScopeAll then
-                cond = _G.UXOfficialESP.CustomTextData.AimTouchScopeCond or 1
+                prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPrio or 1
+                boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperBone or 1
+                speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperSpeed or 30
+                fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperFOV or 20
+                maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperDist or 400
+                useVisCheck = _G.ZenXAHMADESPConfig.AimTouchSniperVisCheck
+                igKnock = _G.ZenXAHMADESPConfig.AimTouchSniperIgKnock
+                igBot = _G.ZenXAHMADESPConfig.AimTouchSniperIgBot
+                predVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPred or 0
+            elseif _G.ZenXAHMADESPConfig.AimTouchScopeAll then
+                cond = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeCond or 1
                 if cond == 1 and not isFiring then return end
-                prioMode = _G.UXOfficialESP.CustomTextData.AimTouchScopePrio or 1
-                boneIdx = _G.UXOfficialESP.CustomTextData.AimTouchScopeBone or 2
-                speedVal = _G.UXOfficialESP.CustomTextData.AimTouchScopeSpeed or 40
-                fovVal = _G.UXOfficialESP.CustomTextData.AimTouchScopeFOV or 20
-                maxDistMeters = _G.UXOfficialESP.CustomTextData.AimTouchScopeDist or 300
-                useVisCheck = _G.UXOfficialESPConfig.AimTouchScopeVisCheck
-                igKnock = _G.UXOfficialESPConfig.AimTouchScopeIgKnock
-                igBot = _G.UXOfficialESPConfig.AimTouchScopeIgBot
-                predVal = _G.UXOfficialESP.CustomTextData.AimTouchScopePred or 0 
-                recoilCompVal = _G.UXOfficialESP.CustomTextData.AimTouchScopeRecoil or 0
+                prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchScopePrio or 1
+                boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeBone or 2
+                speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeSpeed or 40
+                fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeFOV or 20
+                maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeDist or 300
+                useVisCheck = _G.ZenXAHMADESPConfig.AimTouchScopeVisCheck
+                igKnock = _G.ZenXAHMADESPConfig.AimTouchScopeIgKnock
+                igBot = _G.ZenXAHMADESPConfig.AimTouchScopeIgBot
+                predVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopePred or 0 
+                recoilCompVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeRecoil or 0
             else
                 return
             end
         else
-            if not _G.UXOfficialESPConfig.AimTouchHipfire then return end
-            cond = _G.UXOfficialESP.CustomTextData.AimTouchHipCond or 1
+            if not _G.ZenXAHMADESPConfig.AimTouchHipfire then return end
+            cond = _G.ZenXAHMADESP.CustomTextData.AimTouchHipCond or 1
             if cond == 1 and not isFiring then return end 
-            prioMode = _G.UXOfficialESP.CustomTextData.AimTouchHipPrio or 1
-            boneIdx = _G.UXOfficialESP.CustomTextData.AimTouchHipBone or 1
-            speedVal = _G.UXOfficialESP.CustomTextData.AimTouchHipSpeed or 50
-            fovVal = _G.UXOfficialESP.CustomTextData.AimTouchHipFOV or 30
-            maxDistMeters = _G.UXOfficialESP.CustomTextData.AimTouchHipDist or 250
-            useVisCheck = _G.UXOfficialESPConfig.AimTouchHipVisCheck
-            igKnock = _G.UXOfficialESPConfig.AimTouchHipIgKnock
-            igBot = _G.UXOfficialESPConfig.AimTouchHipIgBot
+            prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchHipPrio or 1
+            boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchHipBone or 1
+            speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchHipSpeed or 50
+            fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchHipFOV or 30
+            maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchHipDist or 250
+            useVisCheck = _G.ZenXAHMADESPConfig.AimTouchHipVisCheck
+            igKnock = _G.ZenXAHMADESPConfig.AimTouchHipIgKnock
+            igBot = _G.ZenXAHMADESPConfig.AimTouchHipIgBot
         end
 
         local currentMaxDist = maxDistMeters * 100
@@ -5480,7 +5554,7 @@ _G.AimTouch = function()
         pc:SetControlRotation(finalRot, "AimTouch")
         
         -- SHOTGUN AUTO FIRE
-        if isShotgun and _G.UXOfficialESPConfig.AimTouchSGAutoFire then
+        if isShotgun and _G.ZenXAHMADESPConfig.AimTouchSGAutoFire then
             pcall(function()
                 local distToTarget = player:GetDistanceTo(bestTarget) / 100
                 if distToTarget <= maxDistMeters then
@@ -5494,7 +5568,7 @@ _G.AimTouch = function()
                     if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then 
                         currentWep:StartFire() 
                     end
-                    _G.UXOfficialESP.IsAutoFiring = true
+                    _G.ZenXAHMADESP.IsAutoFiring = true
                 end
             end)
         end
@@ -5505,8 +5579,8 @@ end
 -- MAIN LOOP
 -- ==========================================
 local function MainLoop()
-    if _G.UXOfficialESP.CustomTextData == nil then 
-        _G.UXOfficialESP.CustomTextData = {
+    if _G.ZenXAHMADESP.CustomTextData == nil then 
+        _G.ZenXAHMADESP.CustomTextData = {
             AimTouchHipPrio = 1,
             AimTouchHipBone = 1,
             AimTouchHipCond = 1,
@@ -5548,16 +5622,16 @@ local function MainLoop()
     if not licensed then return end
     _G.InitModMenuTab()
     ShowModMenu()
-    if _G.UXOfficialESPConfig.AimTouchEnable then
+    if _G.ZenXAHMADESPConfig.AimTouchEnable then
         _G.AimTouch()
     end
 end
 
-_G.UXOfficialESP.LoopToken = (_G.UXOfficialESP.LoopToken or 0) + 1
-local myToken = _G.UXOfficialESP.LoopToken
+_G.ZenXAHMADESP.LoopToken = (_G.ZenXAHMADESP.LoopToken or 0) + 1
+local myToken = _G.ZenXAHMADESP.LoopToken
 
 local function FastTick()
-    if myToken ~= _G.UXOfficialESP.LoopToken then return end
+    if myToken ~= _G.ZenXAHMADESP.LoopToken then return end
     pcall(MainLoop)
     local okTicker, ticker = pcall(require, "common.time_ticker")
     if okTicker and ticker and ticker.AddTimerOnce then
