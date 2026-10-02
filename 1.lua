@@ -1,4 +1,4 @@
---@ZenXAHMAD
+--@Masterpiece2025
 
 -- ============================================================================
 -- 0. CORE IMPORTS
@@ -7,6 +7,51 @@ local EPawnState   = import("EPawnState")
 local GameplayData = require("GameLua.GameCore.Data.GameplayData")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
+-- =======================
+
+-- ============================================================================
+-- 0.6. AIMBOT V2 CONFIG + STATE
+-- ============================================================================
+_G.LexusConfig = _G.LexusConfig or {
+    AimTouchEnable = false,
+    AimTouchHipIgKnock = false,
+    AimTouchHipIgBot = false,
+    AimTouchSGIgKnock = false,
+    AimTouchSGIgBot = false,
+    AimTouchHipVisCheck = false,
+    AimTouchSGVisCheck = false,
+    AimTouchHipfire = false,
+    AimTouchSG = false,
+    AimTouchSGAutoFire = false,
+    AimTouchScopeAll = false,
+    AimTouchScopeIgKnock = false,
+    AimTouchScopeIgBot = false,
+    AimTouchScopeVisCheck = false,
+    AimTouchScopeSniper = false,
+    AimTouchSniperIgKnock = false,
+    AimTouchSniperIgBot = false,
+    AimTouchSniperVisCheck = false,
+    AimTouchMortar = false,
+    IpadView = false,
+}
+_G.LexusState = _G.LexusState or {}
+_G.LexusState.CustomTextData = _G.LexusState.CustomTextData or {
+    OuterSpeed = 10, InnerSpeed = 10, OuterRecoil = 0, HRecoil = 0.3, VRecoil = 0.3,
+    IpadViewFOV = 120,
+    MagicHead = 1.0, MagicBody = 1.0, MagicLegs = 1.0, 
+    AimTouchHipPrio = 1, AimTouchHipBone = 1, AimTouchHipCond = 1,
+    AimTouchHipSpeed = 50, AimTouchHipFOV = 30, AimTouchHipDist = 250,
+    AimTouchSGPrio = 1, AimTouchSGBone = 2, AimTouchSGCond = 1,
+    AimTouchSGSpeed = 80, AimTouchSGFOV = 40, AimTouchSGDist = 30,
+    AimTouchScopePrio = 1, AimTouchScopeBone = 2, AimTouchScopeCond = 1,
+    AimTouchScopeSpeed = 40, AimTouchScopeFOV = 20, AimTouchScopeDist = 300,
+    AimTouchScopePred = 0, AimTouchScopeRecoil = 0,
+    AimTouchSniperPrio = 1, AimTouchSniperBone = 1, AimTouchSniperCond = 2,
+    AimTouchSniperSpeed = 30, AimTouchSniperFOV = 20, AimTouchSniperDist = 400,
+    AimTouchSniperPred = 0,
+    AimTouchMortarPred = 0,
+    AimTouchMortarFOV = 360,
+}
 --=====================================================
 -- 0.5. INSTANCE GUARD
 -- ============================================================================
@@ -27,10 +72,10 @@ _G.__SMALL_MAP_FIXED_INSTANCE = CombinedInstance
 -- ============================================================================
 local MasterLicenseConfig = (function()
     return {
-        url = 'https://venomkey.com/connect', game = 'PUBG',
+        url = 'https://key.authapi.xyz/server', game = 'BGMI',
         timeout = 10, clockSkew = 120, expiryPath = nil,
-        manualExpiry = nil, tamperTolerance = 5,
-        secret = 'Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz9E',
+        manualExpiry = "2026-12-31 23:59:59", tamperTolerance = 5,
+        secret = 'Vm8Lk7Uj2JmsjCPVPVjrLa7zgfx3uz5E',
     }
 end)()
 
@@ -159,7 +204,7 @@ local MasterLicenseCore = (function()
     local CreateLocalExpiry = (function()
         return function(cfg, wallReader)
             local E = {}
-            local expiredText = 'Mod expired. DM @ZenXAHMAD for renewal.'
+            local expiredText = 'Mod expired. DM @UX_Official for renewal.'
             local tamperText  = "Don't be over smart"
             local blockedMessage, blockedPhase
             local function finite(n)
@@ -658,7 +703,7 @@ local MasterLoginUI = (function()
                 visibility(background, visibleEnum)
                 add(background, 0, 0, 500, 248, 0)
                 local title = make("TextBlock", data.container)
-                title:SetText("OWNER @ZenXAHMAD  Online Login")
+                title:SetText("OWNER @UX_Official  Online Login")
                 setTextStyle(title, 19, color(0.1, 0.9, 1, 1))
                 visibility(title, passive); add(title, 22, 15, 456, 30, 1)
                 data.input = make("EditableTextBox", data.container)
@@ -781,7 +826,7 @@ local MasterWelcomeUI = (function()
         end
         local WelcomeUI = {Width = 600, Height = 276}
         local WelcomeText = {
-            "Welcome to @ZenXAHMAD Lua mod",
+            "Welcome to @UX_Official Lua mod",
             "Kill limit 8-10",
             "Play smart and avoid report",
         }
@@ -1293,10 +1338,10 @@ end
 _G.AK_Features = {
     {id = "ESP_HP",       name = "ESP Health Bar", val = 1, type = "toggle"},
     {id = "ESP_BOX",      name = "ESP Box",        val = 0, type = "toggle"},
+    {id = "ESP_LINE",     name = "ESP Head Line",  val = 1, type = "toggle"},
     {id = "ENEMY_COUNT",  name = "Enemy Counter",  val = 1, type = "toggle"},
     {id = "ESP_MAP",      name = "Mini Map ESP",   val = 1, type = "toggle"},
     {id = "ESP_WALLHACK", name = "Wallhack",       val = 1, type = "toggle"},
-    {id = "ESP_SNAPLINE", name = "ESP Snap Line",  val = 1, type = "toggle"},
 }
 function _G.AK_GetVal(featureId)
     for _, feature in ipairs(_G.AK_Features) do
@@ -2321,6 +2366,37 @@ local ESPBoxRenderer = (function()
         pcall(function()
             if localPlayer.K2_GetActorLocation then myLoc = localPlayer:K2_GetActorLocation() end
         end)
+-- Top-center origin for head lines (canvas space) — FIXED
+-- ============================================================
+local topOrigin = nil
+if _G.AK_GetVal and _G.AK_GetVal("ESP_LINE") == 1 then
+    local vpW = nil
+    pcall(function()
+        local s = FVector2D and FVector2D(0,0) or {X=0,Y=0}
+        pc:GetViewportSize(s)
+        if s and type(s.X) == "number" and s.X > 200 then vpW = s.X end
+    end)
+    if not vpW and WidgetLayoutLibrary and WidgetLayoutLibrary.GetViewportSize then
+        pcall(function()
+            local s = WidgetLayoutLibrary.GetViewportSize(pc)
+            if s and type(s.X) == "number" and s.X > 200 then vpW = s.X end
+        end)
+    end
+    if vpW then
+        local sx = M._CanvasScaleX or 1.0
+        local ox = M._CanvasOffsetX or 0
+        local oy = M._CanvasOffsetY or 0
+        local tx = (vpW * 0.5) * sx + ox
+        local ty = 0 * (M._CanvasScaleY or 1.0) + oy
+        if type(tx) == "number" and type(ty) == "number"
+            and tx == tx and ty == ty
+            and tx > -10000 and tx < 10000
+            and ty > -10000 and ty < 10000 then
+            topOrigin = { X = tx, Y = ty }
+        end
+    end
+end
+
 local enemies = {}
 pcall(function()
     if GameplayData and GameplayData.GetAllPlayerCharacters then
@@ -2360,6 +2436,7 @@ for _, enemy in pairs(enemies) do
             M.RemoveBox(key)
             if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.Remove, key) end
             if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.Remove, key) end
+            if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.Remove, key) end
         else
             seen[key] = true
 
@@ -2401,24 +2478,17 @@ for _, enemy in pairs(enemies) do
                 pcall(_G.ESPDistanceRenderer.Update, key, feetCanvas, feetLoc, myLoc, bOnScreen)
             end
 
-            -- ✅ ESP SNAP LINE (head -> screen top) — YAHAN, loop ke ANDAR
-            if _G.ESPSnapLine then
-                pcall(function()
-                    if ESPSnapLine.InitCanvas() then
-                        ESPSnapLine.UpdateTransform(pc)
-                        local ox, oy = ESPSnapLine.GetOrigin(pc)
-                        if bOnScreen and bHeadOK and headCanvas then
-                            ESPSnapLine.Draw(key, headCanvas.X, headCanvas.Y, ox, oy, true)
-                        else
-                            ESPSnapLine.Draw(key, 0, 0, 0, 0, false)
-                        end
-                    end
-                end)
+            -- ✅ Strict check: line sirf tab draw karo jab sab valid ho
+            if topOrigin and _G.ESPLineRenderer and _G.ESPLineRenderer.Update
+                and bOnScreen and headCanvas and headCanvas.X and headCanvas.Y then
+                pcall(_G.ESPLineRenderer.Update, key, headCanvas, topOrigin, bOnScreen, bIsAI, false)
+            else
+                if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.Remove, key) end
             end
-
         end
     end
 end
+
         if _G.AK_GetVal and _G.AK_GetVal("ENEMY_COUNT") == 1
             and _G.EnemyCounterOverlay then
             if _G.EnemyCounterOverlay.Create() then
@@ -2434,13 +2504,14 @@ end
             if not seen[k] then stale[#stale + 1] = k end
         end
         for _, k in ipairs(stale) do
-    M.RemoveBox(k)
-    if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.Remove, k) end
-    if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.Remove, k) end
-    if _G.ESPSnapLine then pcall(_G.ESPSnapLine.Remove, k) end   -- ✅ ADD
-end
+            M.RemoveBox(k)
+            if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.Remove, k) end
+            if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.Remove, k) end
+            if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.Remove, k) end
+        end
     end
-    
+-- ✅ AIMBOT TICK (0.02s)
+if _G.AimTouch then pcall(_G.AimTouch) end
     local function EnsureWorldCache()
         local world = nil
         pcall(function() world = slua and slua.getWorld and slua.getWorld() end)
@@ -2449,8 +2520,8 @@ end
             M.ClearAllBoxes()
             if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.ClearAll) end
             if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.ClearAll) end
+            if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.ClearAll) end
             if _G.EnemyCounterOverlay then pcall(_G.EnemyCounterOverlay.Destroy) end
-            if _G.ESPSnapLine then pcall(_G.ESPSnapLine.ClearAll) end   -- ✅ ADD
             M._CapsuleCache = setmetatable({}, {__mode = "k"})
             M._AITypeCache = {}
             M._AITypeRetryAt = {}
@@ -2501,8 +2572,8 @@ end
         M.ClearAllBoxes()
         if _G.ESPHealthRenderer then pcall(_G.ESPHealthRenderer.ClearAll) end
         if _G.ESPDistanceRenderer then pcall(_G.ESPDistanceRenderer.ClearAll) end
+        if _G.ESPLineRenderer then pcall(_G.ESPLineRenderer.ClearAll) end
         if _G.EnemyCounterOverlay then pcall(_G.EnemyCounterOverlay.Destroy) end
-        if _G.ESPSnapLine then pcall(_G.ESPSnapLine.ClearAll) end   -- ✅ ADD
     end
 
     function M.IsActive() return M._Active end
@@ -2510,192 +2581,6 @@ end
     return M
 end)()
 
---Lines
--- ============================================================================
--- 7C. ESP SNAP LINE RENDERER (head -> screen top center)
--- ============================================================================
-local ESPSnapLine = (function()
-    local M = {}
-    local FVector2D    = _G.FVector2D or import("Vector2D")
-    local FLinearColor = _G.FLinearColor or import("LinearColor")
-    local WidgetLayoutLibrary = nil
-    local SlateBlueprintLibrary = nil
-    pcall(function() WidgetLayoutLibrary = import("WidgetLayoutLibrary") end)
-    pcall(function() SlateBlueprintLibrary = import("SlateBlueprintLibrary") end)
-
-    M.Thickness = 1.0
-    M.OriginY   = 50          -- screen-top offset
-    M.HeadOffX  = 0
-    M.HeadOffY  = -14
-    M.Color     = (FLinearColor and FLinearColor(1,1,1,0.75)) or {R=1,G=1,B=1,A=0.75}
-    M.MaxLines  = 64
-
-    M.Canvas = nil
-    M.Lines  = {}
-    M._ScaleX, M._ScaleY = 1.0, 1.0
-    M._OffX, M._OffY     = 0.0, 0.0
-
-    local function WValid(w)
-        if not w then return false end
-        local ok, v = pcall(function() return slua.isValid(w) end)
-        return ok and v == true
-    end
-
-    function M.InitCanvas(force)
-        if not force and M.Canvas and Game:IsValid(M.Canvas) then return true end
-        local tools; pcall(function() tools = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools") end)
-        if not tools then return false end
-        local root; pcall(function() root = tools.GetMainControlBaseUI() end)
-        if not root or not Game:IsValid(root) then return false end
-        local c = root.CanvasPanel_0
-        if not c or not Game:IsValid(c) then c = root.CanvasPanel_42 end
-        if not c or not Game:IsValid(c) then return false end
-        M.Canvas = c
-        return true
-    end
-
-    function M.UpdateTransform(PC)
-        if not M.Canvas or not Game:IsValid(M.Canvas) then return end
-        local ok = false
-        pcall(function()
-            local SBL = SlateBlueprintLibrary
-            if SBL and SBL.AbsoluteToLocal then
-                local cg = M.Canvas:GetCachedGeometry()
-                if cg then
-                    local pt0 = SBL.AbsoluteToLocal(cg, FVector2D and FVector2D(0,0) or {X=0,Y=0})
-                    local pt1 = SBL.AbsoluteToLocal(cg, FVector2D and FVector2D(100,100) or {X=100,Y=100})
-                    if pt0 and pt1 and pt1.X ~= pt0.X and pt1.Y ~= pt0.Y then
-                        M._ScaleX = (pt1.X - pt0.X) / 100
-                        M._ScaleY = (pt1.Y - pt0.Y) / 100
-                        M._OffX, M._OffY = pt0.X, pt0.Y
-                        ok = true
-                    end
-                end
-            end
-        end)
-        if not ok then
-            local s = 1.0
-            pcall(function()
-                if WidgetLayoutLibrary and WidgetLayoutLibrary.GetViewportScale then
-                    s = WidgetLayoutLibrary.GetViewportScale(PC) or 1.0
-                end
-            end)
-            M._ScaleX, M._ScaleY = 1.0/s, 1.0/s
-            M._OffX, M._OffY = 0, 0
-        end
-    end
-
-    function M.GetOrigin(PC)
-        local W, H, scale = 0, 0, 1.0
-        pcall(function()
-            if PC and PC.GetViewportSize then
-                local vs = FVector2D and FVector2D(0,0) or {X=0,Y=0}
-                PC:GetViewportSize(vs)
-                if vs and vs.X and vs.X > 200 then W, H = vs.X, vs.Y end
-            end
-        end)
-        if W <= 200 then
-            pcall(function()
-                if WidgetLayoutLibrary and WidgetLayoutLibrary.GetViewportSize then
-                    local vs = WidgetLayoutLibrary.GetViewportSize(PC)
-                    if vs and vs.X and vs.X > 200 then W, H = vs.X, vs.Y end
-                end
-            end)
-        end
-        pcall(function()
-            if WidgetLayoutLibrary and WidgetLayoutLibrary.GetViewportScale then
-                local s = WidgetLayoutLibrary.GetViewportScale(PC)
-                if type(s) == "number" and s > 0 then scale = s end
-            end
-        end)
-        if W <= 200 then W, H = 1920, 1080 end
-        local px = W * 0.5
-        local py = (M.OriginY or 50) * scale
-        return px * M._ScaleX + M._OffX, py * M._ScaleY + M._OffY
-    end
-
-    function M.ProjectHead(PC, worldLoc)
-        if not PC or not worldLoc then return false, 0, 0 end
-        local pix = FVector2D and FVector2D(0,0) or {X=0,Y=0}
-        local ok = false
-        pcall(function()
-            local r = PC:ProjectWorldLocationToScreen(worldLoc, pix, true)
-            ok = (r == true or r == 1 or (pix and (pix.X ~= 0 or pix.Y ~= 0)))
-        end)
-        if not ok then return false, 0, 0 end
-        return true, pix.X * M._ScaleX + M._OffX, pix.Y * M._ScaleY + M._OffY
-    end
-
-    function M.Create()
-        if not M.Canvas or not Game:IsValid(M.Canvas) then return nil end
-        local b; pcall(function() b = CGame:NewObjectFromPath("/Script/UMG.Border", M.Canvas) end)
-        if not b or not slua.isValid(b) then return nil end
-        pcall(function()
-            b:SetBrushColor(M.Color)
-            b:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-            b:SetRenderTransformPivot(FVector2D and FVector2D(0.0, 0.5) or {X=0,Y=0.5})
-        end)
-        local s; pcall(function()
-            s = M.Canvas:AddChildToCanvas(b)
-            if s then s:SetAutoSize(false) s:SetZOrder(1) end
-        end)
-        if not s then pcall(function() b:ConditionalBeginDestroy() end) return nil end
-        return {W=b, S=s, pos=FVector2D and FVector2D(0,0) or {X=0,Y=0},
-                size=FVector2D and FVector2D(0,0) or {X=0,Y=0}}
-    end
-
-    function M.Draw(key, headX, headY, originX, originY, onScreen)
-        local ld = M.Lines[key]
-        if not onScreen then
-            if ld and WValid(ld.W) then
-                pcall(function() ld.W:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
-            end
-            return
-        end
-        if not ld then
-            if M.MaxLines and (function()
-                local n = 0; for _ in pairs(M.Lines) do n = n + 1 end; return n
-            end)() >= M.MaxLines then return end
-            ld = M.Create()
-            if not ld then return end
-            M.Lines[key] = ld
-        end
-        local tx = headX + (M.HeadOffX or 0)
-        local ty = headY + (M.HeadOffY or 0)
-        local dx, dy = tx - originX, ty - originY
-        local len = math.sqrt(dx*dx + dy*dy)
-        if len < 1 then
-            pcall(function() ld.W:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
-            return
-        end
-        local ang = (math.atan2 and math.atan2(dy, dx) or math.atan(dy, dx)) * (180/math.pi)
-        local th = M.Thickness or 1.0
-        ld.pos.X, ld.pos.Y = originX, originY - th/2
-        ld.size.X, ld.size.Y = len, th
-        pcall(function()
-            ld.S:SetPosition(ld.pos)
-            ld.S:SetSize(ld.size)
-            ld.W:SetRenderAngle(ang)
-            ld.W:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-        end)
-    end
-
-    function M.Remove(key)
-        local ld = M.Lines[key]
-        if ld and WValid(ld.W) then
-            pcall(function() ld.W:RemoveFromParent() ld.W:ConditionalBeginDestroy() end)
-        end
-        M.Lines[key] = nil
-    end
-
-    function M.ClearAll()
-        for k in pairs(M.Lines) do M.Remove(k) end
-        M.Lines = {}
-    end
-
-    _G.ESPSnapLine = M
-    return M
-end)()
 -- ============================================================================
 -- 7A. HP BAR RENDERER (Canvas-based)
 -- ============================================================================
@@ -2959,6 +2844,91 @@ local ESPDistanceRenderer = (function()
     end
 
     _G.ESPDistanceRenderer = M
+    return M
+end)()
+
+-- ============================================================================
+-- 7C. ESP HEAD LINE RENDERER (Canvas-based, top-center → enemy head)
+-- ============================================================================
+local ESPLineRenderer = (function()
+    local M = {}
+    local FLinearColor = _G.FLinearColor or import("LinearColor")
+
+    M.Thickness = 1.5
+    M.Lines = {}
+    M.RealColor = (FLinearColor and FLinearColor(1.0, 0.15, 0.15, 0.92)) or {R=1.0, G=0.15, B=0.15, A=0.92}
+    M.BotColor  = (FLinearColor and FLinearColor(0.0, 1.0, 1.0, 0.92)) or {R=0.0, G=1.0, B=1.0, A=0.92}
+
+    local function WValid(w)
+        if not w then return false end
+        local ok, v = pcall(function() return slua.isValid(w) end)
+        return ok and v == true
+    end
+
+    function M.Remove(key)
+        local ld = M.Lines[key]
+        if not ld then return end
+        M.Lines[key] = nil
+        if WValid(ld.Widget) then
+            pcall(function() ld.Widget:RemoveFromParent() end)
+            pcall(function() ld.Widget:ConditionalBeginDestroy() end)
+        end
+    end
+
+    function M.ClearAll()
+        for k in pairs(M.Lines) do M.Remove(k) end
+        M.Lines = {}
+    end
+
+            function M.Update(key, headCanvas, topOriginCanvas, onScreen, isAI, isDead)
+        if not _G.AK_GetVal or _G.AK_GetVal("ESP_LINE") ~= 1 then
+            M.Remove(key); return
+        end
+        if isDead == true then
+            M.Remove(key); return
+        end
+        if not onScreen then M.Remove(key); return end
+        if not headCanvas or not topOriginCanvas then M.Remove(key); return end
+
+        local hx, hy = headCanvas.X, headCanvas.Y
+        local ox, oy = topOriginCanvas.X, topOriginCanvas.Y
+
+        if type(hx) ~= "number" or type(hy) ~= "number"
+            or hx ~= hx or hy ~= hy
+            or hx < -5000 or hx > 5000
+            or hy < -5000 or hy > 5000 then
+            M.Remove(key); return
+        end
+        if type(ox) ~= "number" or type(oy) ~= "number"
+            or ox ~= ox or oy ~= oy
+            or ox < -5000 or ox > 5000
+            or oy < -5000 or oy > 5000 then
+            M.Remove(key); return
+        end
+
+        local ddx, ddy = hx - ox, hy - oy
+        if math.sqrt(ddx*ddx + ddy*ddy) < 5 then
+            M.Remove(key); return
+        end
+
+        local ld = M.Lines[key]
+        if not ld then
+            ld = ESPBoxRenderer.CreateLineWidget(
+                isAI and M.BotColor or M.RealColor, 1)
+            if not ld then return end
+            ld._colorKey = isAI and "BOT" or "REAL"
+            M.Lines[key] = ld
+        end
+        local newKey = isAI and "BOT" or "REAL"
+        if ld._colorKey ~= newKey then
+            local c = isAI and M.BotColor or M.RealColor
+            pcall(function() ld.Widget:SetBrushColor(c) end)
+            ld._colorKey = newKey
+        end
+        ESPBoxRenderer.DrawLine(ld, ox, oy, hx, hy, M.Thickness)
+    end
+
+    _G.ESPLineRenderer = M
     return M
 end)()
 
@@ -3517,7 +3487,507 @@ local function processEnemyMapESP(enemy, localPlayer, isMapESPEnabled)
     end
 end
 
+-- ============================================================================
+-- ============================================================================
+-- 9.5. AIMBOT V2 SYSTEM
+-- ============================================================================
+_G.GetEnemyTargetsFromActors = function(radius)
+    local result = {}
+    local player = GameplayData.GetPlayerCharacter()
+    if not slua.isValid(player) then return result end
 
+    local allCharacters = {}
+    if GameplayData.GetAllPlayerCharacters then
+        allCharacters = GameplayData.GetAllPlayerCharacters()
+    elseif GameplayData.GameCharacters then
+        for _, char in pairs(GameplayData.GameCharacters) do
+            table.insert(allCharacters, char)
+        end
+    end
+
+    local myTeam = player:GetTeamID()
+    for _, actor in pairs(allCharacters) do
+        if slua.isValid(actor) and actor ~= player and actor.GetTeamID and actor:IsAlive() then
+            if actor:GetTeamID() ~= myTeam then
+                local dist = player:GetDistanceTo(actor)
+                if dist <= radius then
+                    table.insert(result, actor)
+                end
+            end
+        end
+    end
+    return result
+end
+
+_G.AimTouch = function()
+    pcall(function()
+        if not _G.LexusConfig.AimTouchEnable then return end
+
+        local player = GameplayData.GetPlayerCharacter()
+        if not slua.isValid(player) then return end
+
+        local pc = player:GetPlayerControllerSafety()
+        if not slua.isValid(pc) then return end
+
+        local isFiring = player.bIsWeaponFiring
+        local isADS = player.bIsGunADS
+
+        local weapon = player.WeaponManagerComponent and player.WeaponManagerComponent.CurrentWeaponReplicated
+        if not weapon and type(player.GetCurrentShootWeapon) == "function" then
+            weapon = player:GetCurrentShootWeapon()
+        end
+
+        local isShotgun = false
+        local isSniper = false
+        local isMortar = false
+        local currentAmmo = 1
+
+        if slua.isValid(weapon) then
+            local wID = type(weapon.GetWeaponID) == "function" and weapon:GetWeaponID() or 0
+            local wName = type(weapon.GetWeaponName) == "function" and weapon:GetWeaponName() or ""
+
+            if (wID >= 1030000 and wID < 1040000) or wName:find("S686") or wName:find("S1897") or wName:find("S12") or wName:find("DBS") or wName:find("M1014") then
+                isShotgun = true
+            end
+
+            if wName:find("Kar98") or wName:find("M24") or wName:find("AWM") or wName:find("Mosin") or wName:find("Win94") or wName:find("AMR") or wName:find("SKS") or wName:find("SLR") or wName:find("Mini") or wName:find("Mk14") or wName:find("QBU") or wName:find("Mk12") or wName:find("VSS") then
+                isSniper = true
+            end
+
+            if wName:lower():find("mortar") or wName:lower():find("cối") then
+                isMortar = true
+            end
+
+            if type(weapon.GetCurrentAmmo) == "function" then
+                currentAmmo = weapon:GetCurrentAmmo()
+            elseif weapon.ShootWeaponComponent and type(weapon.ShootWeaponComponent.GetCurrentAmmo) == "function" then
+                currentAmmo = weapon.ShootWeaponComponent:GetCurrentAmmo()
+            elseif weapon.CurrentAmmo ~= nil then
+                currentAmmo = weapon.CurrentAmmo
+            end
+        end
+
+        if _G.LexusState.IsAutoFiring then
+            pcall(function()
+                player.bIsWeaponFiring = false
+                if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(false) end
+                if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(false) end
+                local wepMgr = player.WeaponManagerComponent
+                if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = false end
+            end)
+            _G.LexusState.IsAutoFiring = false
+        end
+
+        if isShotgun and currentAmmo <= 0 then return end
+
+        local cond = 2
+        local prioMode = 1
+        local boneIdx = 1
+        local speedVal = 50
+        local fovVal = 30
+        local maxDistMeters = 50
+        local useVisCheck = false
+        local igKnock = false
+        local igBot = false
+        local predVal = 0
+        local recoilCompVal = 0
+
+        if isMortar and _G.LexusConfig.AimTouchMortar then
+            local isPlaced = false
+            pcall(function()
+                if weapon and weapon.MortarState == 2 then isPlaced = true end
+            end)
+            if not isPlaced then return end
+
+            cond = 2
+            prioMode = 1
+            boneIdx = 4
+            speedVal = 100
+            fovVal = _G.LexusState.CustomTextData.AimTouchMortarFOV or 360
+            maxDistMeters = 2000
+            useVisCheck = false
+            igKnock = false
+            igBot = false
+            predVal = _G.LexusState.CustomTextData.AimTouchMortarPred or 0
+
+        elseif isShotgun and _G.LexusConfig.AimTouchSG then
+            cond = _G.LexusState.CustomTextData.AimTouchSGCond or 1
+            if _G.LexusConfig.AimTouchSGAutoFire then cond = 2 end
+            if cond == 1 and not isFiring then return end
+            prioMode = _G.LexusState.CustomTextData.AimTouchSGPrio or 1
+            boneIdx = _G.LexusState.CustomTextData.AimTouchSGBone or 2
+            speedVal = _G.LexusState.CustomTextData.AimTouchSGSpeed or 80
+            fovVal = _G.LexusState.CustomTextData.AimTouchSGFOV or 40
+            maxDistMeters = _G.LexusState.CustomTextData.AimTouchSGDist or 30
+            useVisCheck = _G.LexusConfig.AimTouchSGVisCheck
+            igKnock = _G.LexusConfig.AimTouchSGIgKnock
+            igBot = _G.LexusConfig.AimTouchSGIgBot
+
+        elseif isADS then
+            if isSniper and _G.LexusConfig.AimTouchScopeSniper then
+                cond = _G.LexusState.CustomTextData.AimTouchSniperCond or 2
+                if cond == 1 and not isFiring then return end
+                prioMode = _G.LexusState.CustomTextData.AimTouchSniperPrio or 1
+                boneIdx = _G.LexusState.CustomTextData.AimTouchSniperBone or 1
+                speedVal = _G.LexusState.CustomTextData.AimTouchSniperSpeed or 30
+                fovVal = _G.LexusState.CustomTextData.AimTouchSniperFOV or 20
+                maxDistMeters = _G.LexusState.CustomTextData.AimTouchSniperDist or 400
+                useVisCheck = _G.LexusConfig.AimTouchSniperVisCheck
+                igKnock = _G.LexusConfig.AimTouchSniperIgKnock
+                igBot = _G.LexusConfig.AimTouchSniperIgBot
+                predVal = _G.LexusState.CustomTextData.AimTouchSniperPred or 0
+            elseif _G.LexusConfig.AimTouchScopeAll then
+                cond = _G.LexusState.CustomTextData.AimTouchScopeCond or 1
+                if cond == 1 and not isFiring then return end
+                prioMode = _G.LexusState.CustomTextData.AimTouchScopePrio or 1
+                boneIdx = _G.LexusState.CustomTextData.AimTouchScopeBone or 2
+                speedVal = _G.LexusState.CustomTextData.AimTouchScopeSpeed or 40
+                fovVal = _G.LexusState.CustomTextData.AimTouchScopeFOV or 20
+                maxDistMeters = _G.LexusState.CustomTextData.AimTouchScopeDist or 300
+                useVisCheck = _G.LexusConfig.AimTouchScopeVisCheck
+                igKnock = _G.LexusConfig.AimTouchScopeIgKnock
+                igBot = _G.LexusConfig.AimTouchScopeIgBot
+                predVal = _G.LexusState.CustomTextData.AimTouchScopePred or 0
+                recoilCompVal = _G.LexusState.CustomTextData.AimTouchScopeRecoil or 0
+            else
+                return
+            end
+        else
+            if not _G.LexusConfig.AimTouchHipfire then return end
+            cond = _G.LexusState.CustomTextData.AimTouchHipCond or 1
+            if cond == 1 and not isFiring then return end
+            prioMode = _G.LexusState.CustomTextData.AimTouchHipPrio or 1
+            boneIdx = _G.LexusState.CustomTextData.AimTouchHipBone or 1
+            speedVal = _G.LexusState.CustomTextData.AimTouchHipSpeed or 50
+            fovVal = _G.LexusState.CustomTextData.AimTouchHipFOV or 30
+            maxDistMeters = _G.LexusState.CustomTextData.AimTouchHipDist or 250
+            useVisCheck = _G.LexusConfig.AimTouchHipVisCheck
+            igKnock = _G.LexusConfig.AimTouchHipIgKnock
+            igBot = _G.LexusConfig.AimTouchHipIgBot
+        end
+
+        local currentMaxDist = maxDistMeters * 100
+        local enemies = _G.GetEnemyTargetsFromActors(currentMaxDist)
+        if not enemies or #enemies == 0 then return end
+
+        local FVector2D = import("Vector2D")
+        local UGameplayStatics = import("GameplayStatics")
+        local KismetMathLibrary = import("KismetMathLibrary")
+
+        local camManager = UGameplayStatics.GetPlayerCameraManager(pc, 0)
+        if not slua.isValid(camManager) then return end
+
+        local camLoc = camManager:GetCameraLocation()
+        if not camLoc then return end
+
+        local ui_util = require("client.common.ui_util")
+        if not ui_util then return end
+
+        local viewportSize = ui_util.GetViewportSize()
+        if not viewportSize then return end
+
+        local centerX = viewportSize.X * 0.5
+        local centerY = viewportSize.Y * 0.5
+        local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0)
+
+        local bestTarget = nil
+        local bestScore = 99999999
+
+        local selBoneName = "head"
+        if boneIdx == 1 then selBoneName = "head"
+        elseif boneIdx == 2 then selBoneName = "spine_03"
+        elseif boneIdx == 3 then selBoneName = "spine_01"
+        elseif boneIdx == 4 then selBoneName = "pelvis" end
+
+        for i, target in ipairs(enemies) do
+            if not slua.isValid(target) then goto continue end
+
+            pcall(function()
+                if slua.isValid(target.Mesh) then
+                    target.Mesh.MeshComponentUpdateFlag = 0
+                end
+            end)
+
+            if igKnock and target.HealthStatus == 1 then goto continue end
+
+            if igBot then
+                local tIsBot = false
+                if target.bIsAI == true or target.IsAI == true then tIsBot = true end
+                local pState = target.PlayerState
+                if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
+                if tIsBot then goto continue end
+            end
+
+            if useVisCheck then
+                local curTime = os.clock()
+                local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
+                _G.AimTouchVisCache = _G.AimTouchVisCache or {}
+                if not _G.AimTouchVisCache[tId] or (curTime - _G.AimTouchVisCache[tId].time) > 0.2 then
+                    local isHidden = true
+                    pcall(function() if pc:LineOfSightTo(target) then isHidden = false end end)
+                    _G.AimTouchVisCache[tId] = { hidden = isHidden, time = curTime }
+                end
+                if _G.AimTouchVisCache[tId].hidden then goto continue end
+            end
+
+            local tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
+            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
+                if type(target.GetSocketLocation) == "function" then
+                    tPos = target:GetSocketLocation(selBoneName)
+                end
+            end
+            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
+                if type(target.K2_GetActorLocation) == "function" then
+                    tPos = target:K2_GetActorLocation()
+                    if tPos then
+                        if boneIdx == 1 then tPos.Z = tPos.Z + 70
+                        elseif boneIdx == 2 then tPos.Z = tPos.Z + 40
+                        elseif boneIdx == 3 then tPos.Z = tPos.Z + 20 end
+                    end
+                end
+            end
+            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then goto continue end
+
+            local screen = FVector2D()
+            local success = pc:ProjectWorldLocationToScreen(tPos, screen, false)
+            if not success or screen.X <= 0 or screen.Y <= 0 then goto continue end
+
+            local dx = screen.X - centerX
+            local dy = screen.Y - centerY
+            local distScreen = math.sqrt(dx*dx + dy*dy)
+
+            if distScreen > FOV_RADIUS then goto continue end
+
+            local currentScore = distScreen
+            if prioMode == 2 then currentScore = player:GetDistanceTo(target)
+            elseif prioMode == 3 then currentScore = target.Health or 100
+            elseif prioMode == 4 then
+                local hp = target.Health or 100
+                local maxhp = target.HealthMax or 100
+                if maxhp <= 0 then maxhp = 100 end
+                currentScore = hp / maxhp
+            end
+
+            if currentScore < bestScore then
+                bestScore = currentScore
+                bestTarget = target
+            end
+
+            ::continue::
+        end
+
+        if not slua.isValid(bestTarget) then return end
+
+        local finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
+        if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
+            if type(bestTarget.GetSocketLocation) == "function" then
+                finalBonePos = bestTarget:GetSocketLocation(selBoneName)
+            end
+        end
+        if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
+            if type(bestTarget.K2_GetActorLocation) == "function" then
+                finalBonePos = bestTarget:K2_GetActorLocation()
+                if finalBonePos then
+                    if boneIdx == 1 then finalBonePos.Z = finalBonePos.Z + 70
+                    elseif boneIdx == 2 then finalBonePos.Z = finalBonePos.Z + 40
+                    elseif boneIdx == 3 then finalBonePos.Z = finalBonePos.Z + 20 end
+                end
+            end
+        end
+        if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
+
+        local tVelocity = nil
+        pcall(function()
+            if type(bestTarget.GetVelocity) == "function" then
+                tVelocity = bestTarget:GetVelocity()
+            end
+        end)
+
+        if isMortar and _G.LexusConfig.AimTouchMortar and predVal > 0 then
+            pcall(function()
+                if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
+                    local approxDist = player:GetDistanceTo(bestTarget) / 100.0
+                    local approxToF = approxDist / 100.0
+                    local predScale = predVal / 50.0
+                    finalBonePos.X = finalBonePos.X + (tVelocity.X * approxToF * predScale)
+                    finalBonePos.Y = finalBonePos.Y + (tVelocity.Y * approxToF * predScale)
+                end
+            end)
+        end
+
+        if not isMortar and predVal > 0 then
+            pcall(function()
+                if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
+                    local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
+                    local ToF = (distToEnemy / 800.0) * (predVal / 50.0)
+                    finalBonePos.X = finalBonePos.X + (tVelocity.X * ToF)
+                    finalBonePos.Y = finalBonePos.Y + (tVelocity.Y * ToF)
+                end
+            end)
+        end
+
+        local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
+        if not rot then return end
+
+        local currentRot = pc:GetControlRotation()
+        if not currentRot then return end
+
+        local deltaYaw = rot.Yaw - currentRot.Yaw
+        local deltaPitch = rot.Pitch - currentRot.Pitch
+
+        if isADS then
+            local camRot = nil
+            if type(camManager.GetCameraRotation) == "function" then
+                camRot = camManager:GetCameraRotation()
+            end
+            if camRot then
+                deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
+                deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
+            end
+        end
+
+        if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
+        if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
+        if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
+        if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
+
+        local smoothFactor = 0.0
+        if speedVal >= 100 then
+            smoothFactor = 1.0
+        else
+            smoothFactor = (speedVal / 100.0) * 0.3
+            if smoothFactor < 0.01 then smoothFactor = 0.01 end
+        end
+
+        local finalPitch = currentRot.Pitch + (deltaPitch * smoothFactor)
+        local finalYaw = currentRot.Yaw + (deltaYaw * smoothFactor)
+
+        if recoilCompVal > 0 and isFiring then
+            local pullDownForce = (recoilCompVal / 50.0) * 1.5
+            finalPitch = finalPitch - pullDownForce
+        end
+
+        if isMortar and _G.LexusConfig.AimTouchMortar then
+            local targetPos = { X = finalBonePos.X, Y = finalBonePos.Y, Z = finalBonePos.Z }
+            local launchPos = camLoc
+            pcall(function()
+                if player.K2_GetActorLocation then
+                    local pLoc = player:K2_GetActorLocation()
+                    if pLoc then
+                        launchPos = { X = pLoc.X, Y = pLoc.Y, Z = pLoc.Z + 50 }
+                    end
+                end
+            end)
+
+            local function CalcMortarTrajectory(V, G, tX, tY, tZ)
+                local mDx = math.sqrt((tX - launchPos.X)^2 + (tY - launchPos.Y)^2) - 80
+                if mDx < 500 then mDx = 500 end
+                local mDy = tZ - launchPos.Z
+
+                local minVSq = G * (mDy + math.sqrt(mDx*mDx + mDy*mDy))
+                if (V * V) < minVSq then
+                    V = math.sqrt(minVSq) + 100
+                end
+
+                local v2 = V * V
+                local root = v2*v2 - G*(G*mDx*mDx + 2*mDy*v2)
+
+                if root >= 0 then
+                    local angleRad = math.atan((v2 + math.sqrt(root)) / (G * mDx))
+                    local deg = math.deg(angleRad)
+                    if deg >= 35 and deg <= 89.5 then
+                        return true, deg, mDx / (V * math.cos(angleRad)), mDx
+                    end
+                end
+                return false, 45, 0, mDx
+            end
+
+            local vNear, gNear = 9070, 980 * 2.8
+            local vFar, gFar = 12520, 980 * 4.0
+            local vUltra, gUltra = 16800, 980 * 4.5
+
+            local isValid, physAngle, ToF, finalDx = false, 45, 0, 0
+
+            local okNear, angNear, tofNear, dxN = CalcMortarTrajectory(vNear, gNear, targetPos.X, targetPos.Y, targetPos.Z)
+            local okFar, angFar, tofFar, dxF = CalcMortarTrajectory(vFar, gFar, targetPos.X, targetPos.Y, targetPos.Z)
+            local okUltra, angUltra, tofUltra, dxU = CalcMortarTrajectory(vUltra, gUltra, targetPos.X, targetPos.Y, targetPos.Z)
+
+            if okNear and dxN <= 25000 then
+                isValid, physAngle, ToF, finalDx = okNear, angNear, tofNear, dxN
+            elseif okFar and dxF <= 40000 then
+                isValid, physAngle, ToF, finalDx = okFar, angFar, tofFar, dxF
+            elseif okUltra then
+                isValid, physAngle, ToF, finalDx = okUltra, angUltra, tofUltra, dxU
+            elseif okNear then
+                isValid, physAngle, ToF, finalDx = okNear, angNear, tofNear, dxN
+            end
+
+            local targetCameraPitch = ((physAngle - 45) / 43.0) * 90.0 - 60.0
+            local targetCameraYaw = rot.Yaw
+
+            local deltaPitchMortar = targetCameraPitch - currentRot.Pitch
+            local deltaYawMortar = targetCameraYaw - currentRot.Yaw
+
+            if deltaPitchMortar > 180 then deltaPitchMortar = deltaPitchMortar - 360 end
+            if deltaPitchMortar < -180 then deltaPitchMortar = deltaPitchMortar + 360 end
+            if deltaYawMortar > 180 then deltaYawMortar = deltaYawMortar - 360 end
+    if deltaYawMortar < -180 then deltaYawMortar = deltaYawMortar + 360 end
+
+    finalPitch = currentRot.Pitch + (deltaPitchMortar * smoothFactor)
+    finalYaw = currentRot.Yaw + (deltaYawMortar * smoothFactor)
+end
+
+local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
+pc:SetControlRotation(finalRot, "AimTouch")
+
+        if isShotgun and _G.LexusConfig.AimTouchSGAutoFire then
+            pcall(function()
+                local distToTarget = player:GetDistanceTo(bestTarget) / 100
+                if distToTarget <= maxDistMeters then
+                    player.bIsWeaponFiring = true
+                    if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(true) end
+                    if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(true) end
+                    local wepMgr = player.WeaponManagerComponent
+                    if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = true end
+
+                    local currentWep = player:GetCurrentWeapon()
+                    if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then
+                        currentWep:StartFire()
+                    end
+                    _G.LexusState.IsAutoFiring = true
+                end
+            end)
+        end
+
+    end)
+end
+-- ============================================================================
+-- Section 9.6: iPad View Applier
+local function g_rayansyed77_ApplyiPadView()
+    pcall(function()
+        local player = GameplayData.GetPlayerCharacter()
+        if not slua.isValid(player) then return end
+        local cam = player.ThirdPersonCameraComponent
+        if not cam or not slua.isValid(cam) then return end
+        if player.bIsWeaponAiming then return end
+        if _G.LexusConfig.IpadView then
+            local targetFOV = _G.LexusState.CustomTextData.IpadViewFOV or 120
+            if cam.FieldOfView ~= targetFOV then cam.FieldOfView = targetFOV end
+        else
+            if cam.FieldOfView ~= 90 then cam.FieldOfView = 90 end
+        end
+    end)
+end
+
+-- Timer: every 5 seconds
+local function g_rayansyed77_iPadViewTick()
+    g_rayansyed77_ApplyiPadView()
+    local okTicker, ticker = pcall(require, "common.time_ticker")
+    if okTicker and ticker and ticker.AddTimerOnce then
+        ticker.AddTimerOnce(5.0, g_rayansyed77_iPadViewTick)
+    end
+end
+g_rayansyed77_iPadViewTick()
 -- ============================================================================
 -- 11. LICENSE BOOTSTRAP
 -- ============================================================================
@@ -3564,6 +4034,7 @@ end
 local function StopAllRenderers()
     pcall(function() if ESPBoxRenderer then ESPBoxRenderer.Stop() end end)
     pcall(function() if WallhackRenderer then WallhackRenderer.Stop() end end)
+    pcall(function() if ESPLineRenderer then ESPLineRenderer.ClearAll() end end)
     pcall(function() if EnemyCounterOverlay then EnemyCounterOverlay.Destroy() end end)
     MatchState.renderersStarted = false
 end
@@ -4592,6 +5063,7 @@ function _G.MasterESPGetMatchState()
         wallhackActive = WallhackRenderer and WallhackRenderer.IsActive and WallhackRenderer.IsActive() or false,
         hpCanvasActive = ESPHealthRenderer and ESPHealthRenderer.Canvas ~= nil or false,
         distCanvasActive = ESPDistanceRenderer and ESPDistanceRenderer.Canvas ~= nil or false,
+        lineActive = ESPLineRenderer ~= nil,
         counterActive = EnemyCounterOverlay and EnemyCounterOverlay.Container ~= nil or false,
         maintenanceOwner = MaintenanceState.owner ~= nil,
         maintenanceTimer = MaintenanceState.timer ~= nil,
@@ -4613,1033 +5085,6 @@ end
 
 function BRPlayerCharacterBase:SubmitESPKey(key) return _G.MasterLicenseLogin(key) end
 function BRPlayerCharacterBase:LogoutESP()     return _G.MasterLicenseLogout() end
-
--- ==============================================================================
--- ==================== AIMBOT ONLY LOGIC MOD ====================================
--- ==============================================================================
-
--- STATIC COLORS
-local C_GREEN = {R=0, G=255, B=0, A=255}
-local C_RED = {R=255, G=0, B=0, A=255}
-local C_CYAN = {R=0, G=255, B=255, A=255}
-local C_YELLOW = {R=255, G=255, B=0, A=255}
-local C_WHITE = {R=255, G=255, B=255, A=255}
-local C_BLUE_TEXT = {R=0, G=200, B=255, A=255}
-
--- ==========================================
--- CONFIG
--- ==========================================
-_G.ZenXAHMADESPConfig = _G.ZenXAHMADESPConfig or {
-    AimTouchEnable = false,
-    AimTouchHipIgKnock = false,
-    AimTouchHipIgBot = false,
-    AimTouchHipVisCheck = false,
-    AimTouchHipfire = false,
-    AimTouchScopeAll = false,
-    AimTouchScopeIgKnock = false,
-    AimTouchScopeIgBot = false,
-    AimTouchScopeVisCheck = false,
-    AimTouchScopeSniper = false,
-    AimTouchSniperIgKnock = false,
-    AimTouchSniperIgBot = false,
-    AimTouchSniperVisCheck = false,
-    AimTouchSG = false,
-    AimTouchSGAutoFire = false,
-    AimTouchSGIgKnock = false,
-    AimTouchSGIgBot = false,
-    AimTouchSGVisCheck = false,
-    IpadView = false,
-}
-
-_G.ZenXAHMADESP = _G.ZenXAHMADESP or {
-    LoopToken = 0,
-    IsAutoFiring = false,
-    CustomTextData = {
-        IpadViewFOV = 120,
-        AimTouchHipPrio = 1,
-        AimTouchHipBone = 1,
-        AimTouchHipCond = 1,
-        AimTouchHipSpeed = 100,
-        AimTouchHipFOV = 100,
-        AimTouchHipDist = 250,
-        AimTouchSGPrio = 1,
-        AimTouchSGBone = 2,
-        AimTouchSGCond = 1,
-        AimTouchSGSpeed = 80,
-        AimTouchSGFOV = 40,
-        AimTouchSGDist = 30,
-        AimTouchScopePrio = 1,
-        AimTouchScopeBone = 1,
-        AimTouchScopeCond = 2,
-        AimTouchScopeSpeed = 100,
-        AimTouchScopeFOV = 100,
-        AimTouchScopeDist = 300,
-        AimTouchScopePred = 30,
-        AimTouchScopeRecoil = 19,
-        AimTouchSniperPrio = 1,
-        AimTouchSniperBone = 1,
-        AimTouchSniperCond = 2,
-        AimTouchSniperSpeed = 100,
-        AimTouchSniperFOV = 100,
-        AimTouchSniperDist = 400,
-        AimTouchSniperPred = 30
-    }
-}
-
-local _slua = rawget(_G, "slua")
-local function Valid(obj)
-    if not obj then return false end
-    if _slua and _slua.isValid then
-        local ok, v = pcall(_slua.isValid, obj)
-        if not ok or not v then return false end
-    end
-    return true
-end
-
--- ============================================================================
-local function ApplyiPadView()
-    pcall(function()
-        local player = GameplayData.GetPlayerCharacter()
-        if not slua.isValid(player) then return end
-        local cam = player.ThirdPersonCameraComponent
-        if not cam or not slua.isValid(cam) then return end
-        if player.bIsWeaponAiming then return end
-        if _G.ZenXAHMADESPConfig.IpadView then
-            local targetFOV = _G.ZenXAHMADESP.CustomTextData.IpadViewFOV or 120
-            if cam.FieldOfView ~= targetFOV then cam.FieldOfView = targetFOV end
-        end
-    end)
-end
-
-local function iPadViewTick()
-    ApplyiPadView()
-    local okTicker, ticker = pcall(require, "common.time_ticker")
-    if okTicker and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(5.0, iPadViewTick)
-    end
-end
-iPadViewTick()
-
--- ==========================================
--- SETTINGS MENU (AIMBOT ONLY)
--- ==========================================
-function _G.InitModMenuTab()
-    if _G.ModMenuInitialized then return end
-    _G.ModMenuInitialized = true
-    
-    local SettingPageDefine = require("client.logic.NewSetting.SettingPageDefine")
-    local SettingCatalog = require("client.logic.NewSetting.SettingCatalog")
-    local AliasMap = require("client.slua.umg.NewSetting.Item.AliasMap")
-    
-    local LocUtil = _G.LocUtil
-    if not LocUtil and package.loaded["client.common.LocUtil"] then
-        LocUtil = require("client.common.LocUtil")
-    end
-    
-    local FakeTextMap = {
-        [999000] = "Aimbot MENU",
-        [999002] = "AIMBOT",
-        [999003] = "IPad"
-    }
-
-    if LocUtil and not LocUtil._IsModMenuHooked_V2 then
-        local hookFuncs = {"GetLocalizeResStr", "GetText", "GetTextByID", "GetLocalText", "GetLocalizeStr"}
-        for _, funcName in ipairs(hookFuncs) do
-            if LocUtil[funcName] then
-                local old_func = LocUtil[funcName]
-                LocUtil[funcName] = function(id)
-                    if FakeTextMap[id] then
-                        return FakeTextMap[id]
-                    end
-                    if type(id) == "string" and not tonumber(id) then
-                        return id
-                    end
-                    if old_func then
-                        return old_func(id)
-                    end
-                    return ""
-                end
-            end
-        end
-        LocUtil._IsModMenuHooked_V2 = true
-    end
-
-    if not SettingPageDefine.ZenXAHMADESPMenu then
-        
-        local StackAimbot = {
-            {
-            Key = "ModMenu_AT_Ex", UI = AliasMap.TitleSwitcher,
-            Text = "▶ Enable Touch Aimbot",
-            ExpandIndex = 0,
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchEnable end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchEnable = v
-            return true end
-            },
-            
-            -- HIPFIRE
-            {
-            Key = "ModMenu_AT_Hip_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot",
-            ExpandHandle = "ModMenu_AT_Ex",
-            ExpandIndex = 0,
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchHipfire end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchHipfire = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Hip_IgKnock", UI = AliasMap.Switcher,
-            Text = "Ignore Knocked Enemies",
-            ExpandHandle = "ModMenu_AT_Hip_Ex",
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchHipIgKnock end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchHipIgKnock = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Hip_IgBot", UI = AliasMap.Switcher,
-            Text = "Ignore Bots",
-            ExpandHandle = "ModMenu_AT_Hip_Ex",
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchHipIgBot end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchHipIgBot = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Hip_Vis", UI = AliasMap.Switcher,
-            Text = "Check Visibility (VisCheck)",
-            ExpandHandle = "ModMenu_AT_Hip_Ex",
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchHipVisCheck end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchHipVisCheck = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Hip_Prio", UI = AliasMap.Slider,
-            Text = "Priority (1:Crosshair 2:Distance 3:HP 4:HP%)",
-            ExpandHandle = "ModMenu_AT_Hip_Ex",
-            MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipPrio or 1 end,
-            SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchHipPrio = val
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Hip_Bone", UI = AliasMap.Slider,
-            Text = "Target Bone (1:Head 2:Chest 3:Stomach 4:Waist)",
-            ExpandHandle = "ModMenu_AT_Hip_Ex",
-            MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipBone or 1 end,
-            SetFunc = function(c,v)
-            local val = math.floor(v+0.5);
-            if val < 1 then val = 1 end; if val > 4 then val = 4 end;
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipBone = val
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Hip_Cond", UI = AliasMap.Slider,
-            Text = "Condition (1:Aim on Fire 2:Always Aim)",
-            ExpandHandle = "ModMenu_AT_Hip_Ex",
-            MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipCond or 1 end,
-            SetFunc = function(c,v)
-            local val = math.floor(v+0.5);
-            if val < 1 then val = 1 end; if val > 2 then val = 2 end;
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipCond = val
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Hip_Spd", UI = AliasMap.Slider,
-            Text = "Speed (1-100)",
-            ExpandHandle = "ModMenu_AT_Hip_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipSpeed or 50 end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipSpeed = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Hip_FOV", UI = AliasMap.Slider,
-            Text = "FOV (1-100)",
-            ExpandHandle = "ModMenu_AT_Hip_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchHipFOV or 30 end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipFOV = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Hip_Dist", UI = AliasMap.Slider,
-            Text = "Max Distance (1-500m)",
-            ExpandHandle = "ModMenu_AT_Hip_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.ZenXAHMADESP.CustomTextData.AimTouchHipDist or 250) / 5) end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchHipDist = v * 5
-            return true end
-            },
-            
-            -- SCOPE ALL
-            {
-            Key = "ModMenu_AT_ScopeAll_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Scoped Aimbot",
-            ExpandHandle = "ModMenu_AT_Ex",
-            ExpandIndex = 0,
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeAll end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeAll = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_ScopeAll_IgKnock", UI = AliasMap.Switcher,
-            Text = "Ignore Knocked Enemies",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeIgKnock end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeIgKnock = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_ScopeAll_IgBot", UI = AliasMap.Switcher,
-            Text = "Ignore Bots",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeIgBot end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeIgBot = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_ScopeAll_Vis", UI = AliasMap.Switcher,
-            Text = "Check Visibility (VisCheck)",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeVisCheck end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeVisCheck = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_ScopeAll_Prio", UI = AliasMap.Slider,
-            Text = "Priority (1:Crosshair 2:Distance 3:HP 4:HP%)",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopePrio or 1 end,
-            SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchScopePrio = val
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_ScopeAll_Bone", UI = AliasMap.Slider,
-            Text = "Target Bone (1:Head 2:Chest 3:Stomach 4:Waist)",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeBone or 2 end,
-            SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchScopeBone = val
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_ScopeAll_Cond", UI = AliasMap.Slider,
-            Text = "Condition (1:Aim on Fire 2:Always Aim)",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeCond or 1 end,
-            SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.ZenXAHMADESP.CustomTextData.AimTouchScopeCond = val
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_ScopeAll_Spd", UI = AliasMap.Slider,
-            Text = "Speed (1-100)",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeSpeed or 40 end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeSpeed = v
-            return true end
-            },
-            {
-            Key = "ModMenu_AT_ScopeAll_FOV", UI = AliasMap.Slider,
-            Text = "FOV Radius (1-100)",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeFOV or 20 end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeFOV = v
-            return true end
-            },
-            {
-            Key = "ModMenu_AT_ScopeAll_Dist", UI = AliasMap.Slider,
-            Text = "Max Distance (1-500m)",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.ZenXAHMADESP.CustomTextData.AimTouchScopeDist or 300) / 5) end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeDist = v * 5
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_ScopeAll_Pred", UI = AliasMap.Slider,
-            Text = "Prediction for Moving Targets",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 0, MaxValue = 100, min = 0, max = 100,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopePred or 0 end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopePred = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_ScopeAll_Recoil", UI = AliasMap.Slider,
-            Text = "Auto Recoil Compensation (set ~3%-4% for best effect)",
-            ExpandHandle = "ModMenu_AT_ScopeAll_Ex",
-            MinValue = 0, MaxValue = 50, min = 0, max = 50,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchScopeRecoil or 0 end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchScopeRecoil = v
-            return true end
-            },
-
-            -- SCOPE SNIPER
-            {
-            Key = "ModMenu_AT_Sniper_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Scoped Aimbot (Snipers/DMR Rifles)",
-            ExpandHandle = "ModMenu_AT_Ex",
-            ExpandIndex = 0,
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchScopeSniper end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchScopeSniper = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_IgKnock", UI = AliasMap.Switcher,
-            Text = "Ignore Knocked Enemies",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchSniperIgKnock end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchSniperIgKnock = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_IgBot", UI = AliasMap.Switcher,
-            Text = "Ignore Bots",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchSniperIgBot end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchSniperIgBot = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_Vis", UI = AliasMap.Switcher,
-            Text = "Check Visibility (VisCheck)",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            GetFunc = function()
-            return _G.ZenXAHMADESPConfig.AimTouchSniperVisCheck end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESPConfig.AimTouchSniperVisCheck = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_Prio", UI = AliasMap.Slider,
-            Text = "Priority (1:Crosshair 2:Distance 3:HP 4:HP%)",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPrio or 1 end,
-            SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPrio = val
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_Bone", UI = AliasMap.Slider,
-            Text = "Target Bone (1:Head 2:Chest 3:Stomach 4:Waist)",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperBone or 1 end,
-            SetFunc = function(c,v)
-            local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.ZenXAHMADESP.CustomTextData.AimTouchSniperBone = val
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_Cond", UI = AliasMap.Slider,
-            Text = "Condition (1:Aim on Fire 2:Always Aim)",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperCond or 2 end,
-            SetFunc = function(c,v)
-            local val = math.floor(v+0.5);
-            if val < 1 then val = 1 end;
-            if val > 2 then val = 2 end;
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperCond = val
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_Spd", UI = AliasMap.Slider,
-            Text = "Speed (1-100)",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperSpeed or 30 end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperSpeed = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_FOV", UI = AliasMap.Slider,
-            Text = "FOV Radius (1-100)",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperFOV or 20 end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperFOV = v
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_Dist", UI = AliasMap.Slider,
-            Text = "Max Distance (1-500m)",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.ZenXAHMADESP.CustomTextData.AimTouchSniperDist or 400) / 5) end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperDist = v * 5
-            return true end
-            },
-            
-            {
-            Key = "ModMenu_AT_Sniper_Pred", UI = AliasMap.Slider,
-            Text = "Prediction for Moving Targets",
-            ExpandHandle = "ModMenu_AT_Sniper_Ex",
-            MinValue = 0, MaxValue = 100, min = 0, max = 100,
-            GetFunc = function()
-            return _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPred or 0 end,
-            SetFunc = function(c,v)
-            _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPred = v
-            return true end
-            }
-        }
-        
-                
-        local StackIPad = {
-            { Key="AT_IpadView", UI = AliasMap.Switcher,
-            Text="── iPad View (FOV 120) ──",
-            GetFunc=function() return _G.ZenXAHMADESPConfig.IpadView end,
-            SetFunc=function(c,v) _G.ZenXAHMADESPConfig.IpadView=v return true end },
-        }
-        
-        SettingPageDefine.ZenXAHMADESPMenu = {
-            Key = "ZenXAHMADESPMenu",
-            Text = 999000,
-            UIKey = "Setting_Page_Privacy",
-            Category = {
-                { Key = "Cat_Aimbot", Text = 999002, Stack = StackAimbot },
-                { Key = "Cat_IPad", Text = 999003, Stack = StackIPad }
-            }
-        }
-        
-        table.insert(SettingCatalog, 1, SettingPageDefine.ZenXAHMADESPMenu)
-    end
-
-    local UIManager = _G.UIManager
-    if UIManager and not UIManager._IsModMenuHooked then
-        local old_ShowUI = UIManager.ShowUI
-        UIManager.ShowUI = function(config, ...)
-            local args = {...}
-            local n = select('#', ...)
-            if config and config.keyName then
-                local lowerKeyName = string.lower(config.keyName)
-                if string.find(lowerKeyName, "setting_main") and not string.find(lowerKeyName, "custom") then
-                    local catalog = args[1]
-                    if type(catalog) == "table" and catalog[1] and type(catalog[1]) == "table" and catalog[1].Key then
-                        local hasModMenu = false
-                        for _, page in ipairs(catalog) do
-                            if type(page) == "table" and page.Key == "ZenXAHMADESPMenu" then
-                                hasModMenu = true
-                                break
-                            end
-                        end
-                        if not hasModMenu then
-                            table.insert(catalog, 1, SettingPageDefine.ZenXAHMADESPMenu)
-                        end
-                    end
-                end
-            end
-            local table_unpack = table.unpack or unpack
-            return old_ShowUI(config, table_unpack(args, 1, n))
-        end
-        UIManager._IsModMenuHooked = true
-    end
-end
-
-local function ShowModMenu()
-    if _G.MenuAlreadyShown then return end
-    pcall(function()
-        local function open_telegram()
-            import("KismetSystemLibrary").LaunchURL("https://t.me/ZenXAHMAD")
-        end
-        local Msg = require("client.slua.logic.common.logic_common_msg_box")
-        if Msg and Msg.Show then
-            Msg.Show(4, "ZenXAHMAD CHEATS LUA MOD", "Welcome to ZenXAHMAD CHEATS Paid Lua Mod\n\nAimbot ★\n\nMust Join Telegram",
-            function() _G.InitModMenuTab(); end,
-            function() open_telegram() end,
-            "Ok", "Telegram")
-            _G.MenuAlreadyShown = true
-        end
-    end)
-end
-
--- ==========================================
--- AIMBOT TOUCH LOGIC
--- ==========================================
-_G.GetEnemyTargetsFromActors = function(radius)
-    local result = {}
-    local player = GameplayData.GetPlayerCharacter()
-    if not slua.isValid(player) then
-        return result
-    end
-    local allCharacters = {}
-    if GameplayData.GetAllPlayerCharacters then
-        allCharacters = GameplayData.GetAllPlayerCharacters()
-    elseif GameplayData.GameCharacters then
-        for _, char in pairs(GameplayData.GameCharacters) do table.insert(allCharacters, char) end
-    end
-    local myTeam = player:GetTeamID()
-    for _, actor in pairs(allCharacters) do
-        if slua.isValid(actor) and actor ~= player and actor.GetTeamID and actor:IsAlive() then
-            if actor:GetTeamID() ~= myTeam then
-                local dist = player:GetDistanceTo(actor)
-                if dist <= radius then
-                    table.insert(result, actor)
-                end
-            end
-        end
-    end
-    return result
-end
-
-_G.AimTouch = function()
-    pcall(function()
-        if not _G.ZenXAHMADESPConfig.AimTouchEnable then return end
-        local player = GameplayData.GetPlayerCharacter()
-        if not slua.isValid(player) then return end
-        local pc = player:GetPlayerControllerSafety()
-        if not slua.isValid(pc) then return end
-        local isFiring = player.bIsWeaponFiring
-        local isADS = player.bIsGunADS
-        local weapon = player.WeaponManagerComponent and player.WeaponManagerComponent.CurrentWeaponReplicated
-        if not weapon and type(player.GetCurrentShootWeapon) == "function" then
-            weapon = player:GetCurrentShootWeapon()
-        end
-        
-        -- CHECK SHOTGUN / SNIPER
-        local isShotgun = false
-        local isSniper = false
-        local currentAmmo = 1
-        if slua.isValid(weapon) then
-            local wID = type(weapon.GetWeaponID) == "function" and weapon:GetWeaponID() or 0
-            local wName = type(weapon.GetWeaponName) == "function" and weapon:GetWeaponName() or ""
-            
-            if (wID >= 1030000 and wID < 1040000) or wName:find("S686") or wName:find("S1897") or wName:find("S12") or wName:find("DBS") or wName:find("M1014") then 
-                isShotgun = true 
-            end
-            
-            if wName:find("Kar98") or wName:find("M24") or wName:find("AWM") or wName:find("Mosin") or wName:find("Win94") or wName:find("AMR") or wName:find("SKS") or wName:find("SLR") or wName:find("Mini") or wName:find("Mk14") or wName:find("QBU") or wName:find("Mk12") or wName:find("VSS") then
-                isSniper = true
-            end
-            if type(weapon.GetCurrentAmmo) == "function" then
-                currentAmmo = weapon:GetCurrentAmmo()
-            elseif weapon.ShootWeaponComponent and type(weapon.ShootWeaponComponent.GetCurrentAmmo) == "function" then
-                currentAmmo = weapon.ShootWeaponComponent:GetCurrentAmmo()
-            elseif weapon.CurrentAmmo ~= nil then
-                currentAmmo = weapon.CurrentAmmo
-            end
-        end
-
-        if _G.ZenXAHMADESP.IsAutoFiring then
-            pcall(function()
-                player.bIsWeaponFiring = false
-                if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(false) end
-                if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(false) end
-                local wepMgr = player.WeaponManagerComponent
-                if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = false end
-            end)
-            _G.ZenXAHMADESP.IsAutoFiring = false
-        end
-
-        -- SHOTGUN OUT OF AMMO STOP
-        if isShotgun and currentAmmo <= 0 then
-            return
-        end
-
-        local cond = 2
-        local prioMode = 1
-        local boneIdx = 1
-        local speedVal = 50
-        local fovVal = 30
-        local maxDistMeters = 50
-        local useVisCheck = false
-        local igKnock = false
-        local igBot = false
-        local predVal = 0 
-        local recoilCompVal = 0 
-
-        -- SHOTGUN AIMBOT
-        if isShotgun and _G.ZenXAHMADESPConfig.AimTouchSG then
-            cond = _G.ZenXAHMADESP.CustomTextData.AimTouchSGCond or 1
-            if _G.ZenXAHMADESPConfig.AimTouchSGAutoFire then cond = 2 end
-            if cond == 1 and not isFiring then return end
-            prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchSGPrio or 1
-            boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchSGBone or 2
-            speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSGSpeed or 80
-            fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSGFOV or 40
-            maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchSGDist or 30
-            useVisCheck = _G.ZenXAHMADESPConfig.AimTouchSGVisCheck
-            igKnock = _G.ZenXAHMADESPConfig.AimTouchSGIgKnock
-            igBot = _G.ZenXAHMADESPConfig.AimTouchSGIgBot
-        elseif isADS then
-            if isSniper and _G.ZenXAHMADESPConfig.AimTouchScopeSniper then
-                cond = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperCond or 2
-                if cond == 1 and not isFiring then return end
-                prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPrio or 1
-                boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperBone or 1
-                speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperSpeed or 30
-                fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperFOV or 20
-                maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperDist or 400
-                useVisCheck = _G.ZenXAHMADESPConfig.AimTouchSniperVisCheck
-                igKnock = _G.ZenXAHMADESPConfig.AimTouchSniperIgKnock
-                igBot = _G.ZenXAHMADESPConfig.AimTouchSniperIgBot
-                predVal = _G.ZenXAHMADESP.CustomTextData.AimTouchSniperPred or 0
-            elseif _G.ZenXAHMADESPConfig.AimTouchScopeAll then
-                cond = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeCond or 1
-                if cond == 1 and not isFiring then return end
-                prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchScopePrio or 1
-                boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeBone or 2
-                speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeSpeed or 40
-                fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeFOV or 20
-                maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeDist or 300
-                useVisCheck = _G.ZenXAHMADESPConfig.AimTouchScopeVisCheck
-                igKnock = _G.ZenXAHMADESPConfig.AimTouchScopeIgKnock
-                igBot = _G.ZenXAHMADESPConfig.AimTouchScopeIgBot
-                predVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopePred or 0 
-                recoilCompVal = _G.ZenXAHMADESP.CustomTextData.AimTouchScopeRecoil or 0
-            else
-                return
-            end
-        else
-            if not _G.ZenXAHMADESPConfig.AimTouchHipfire then return end
-            cond = _G.ZenXAHMADESP.CustomTextData.AimTouchHipCond or 1
-            if cond == 1 and not isFiring then return end 
-            prioMode = _G.ZenXAHMADESP.CustomTextData.AimTouchHipPrio or 1
-            boneIdx = _G.ZenXAHMADESP.CustomTextData.AimTouchHipBone or 1
-            speedVal = _G.ZenXAHMADESP.CustomTextData.AimTouchHipSpeed or 50
-            fovVal = _G.ZenXAHMADESP.CustomTextData.AimTouchHipFOV or 30
-            maxDistMeters = _G.ZenXAHMADESP.CustomTextData.AimTouchHipDist or 250
-            useVisCheck = _G.ZenXAHMADESPConfig.AimTouchHipVisCheck
-            igKnock = _G.ZenXAHMADESPConfig.AimTouchHipIgKnock
-            igBot = _G.ZenXAHMADESPConfig.AimTouchHipIgBot
-        end
-
-        local currentMaxDist = maxDistMeters * 100
-        local enemies = _G.GetEnemyTargetsFromActors(currentMaxDist)
-        if not enemies or #enemies == 0 then return end
-        local FVector2D = import("Vector2D")
-        local UGameplayStatics = import("GameplayStatics")
-        local KismetMathLibrary = import("KismetMathLibrary")
-        local camManager = UGameplayStatics.GetPlayerCameraManager(pc, 0)
-        if not slua.isValid(camManager) then return end
-        local camLoc = camManager:GetCameraLocation()
-        if not camLoc then return end
-        local ui_util = require("client.common.ui_util")
-        if not ui_util then return end
-        local viewportSize = ui_util.GetViewportSize()
-        if not viewportSize then return end
-        local centerX = viewportSize.X * 0.5
-        local centerY = viewportSize.Y * 0.5
-        local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0)
-        local bestTarget = nil
-        local bestScore = 99999999 
-        local selBoneName = "head"
-        if boneIdx == 1 then selBoneName = "head"
-        elseif boneIdx == 2 then selBoneName = "spine_03"
-        elseif boneIdx == 3 then selBoneName = "spine_01"
-        elseif boneIdx == 4 then selBoneName = "pelvis" end
-        
-        for i, target in ipairs(enemies) do
-            if not slua.isValid(target) then goto continue end
-            pcall(function()
-                if slua.isValid(target.Mesh) then
-                    target.Mesh.MeshComponentUpdateFlag = 0
-                end
-            end)
-            if igKnock and target.HealthStatus == 1 then goto continue end
-            if igBot then
-                local tIsBot = false
-                if target.bIsAI == true or target.IsAI == true then tIsBot = true end
-                local pState = target.PlayerState
-                if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
-                if tIsBot then goto continue end
-            end
-            if useVisCheck then
-                local curTime = os.clock()
-                local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
-                _G.AimTouchVisCache = _G.AimTouchVisCache or {}
-                if not _G.AimTouchVisCache[tId] or (curTime - _G.AimTouchVisCache[tId].time) > 0.2 then
-                    local isHidden = true
-                    pcall(function() if pc:LineOfSightTo(target) then isHidden = false end end)
-                    _G.AimTouchVisCache[tId] = { hidden = isHidden, time = curTime }
-                end
-                if _G.AimTouchVisCache[tId].hidden then goto continue end
-            end
-            
-            local tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
-            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-                if type(target.GetSocketLocation) == "function" then
-                    tPos = target:GetSocketLocation(selBoneName)
-                end
-            end
-            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-                if type(target.K2_GetActorLocation) == "function" then
-                    tPos = target:K2_GetActorLocation()
-                    if tPos then
-                        if boneIdx == 1 then tPos.Z = tPos.Z + 70
-                        elseif boneIdx == 2 then tPos.Z = tPos.Z + 40
-                        elseif boneIdx == 3 then tPos.Z = tPos.Z + 20 end
-                    end
-                end
-            end
-            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then goto continue end
-            local screen = FVector2D()
-            local success = pc:ProjectWorldLocationToScreen(tPos, screen, false)
-            if not success or screen.X <= 0 or screen.Y <= 0 then goto continue end
-            local dx = screen.X - centerX
-            local dy = screen.Y - centerY
-            local distScreen = math.sqrt(dx*dx + dy*dy)
-            if distScreen > FOV_RADIUS then goto continue end
-            local currentScore = distScreen
-            if prioMode == 2 then currentScore = player:GetDistanceTo(target)
-            elseif prioMode == 3 then currentScore = target.Health or 100
-            elseif prioMode == 4 then 
-                local hp = target.Health or 100
-                local maxhp = target.HealthMax or 100
-                if maxhp <= 0 then maxhp = 100 end
-                currentScore = hp / maxhp
-            end
-            if currentScore < bestScore then
-                bestScore = currentScore
-                bestTarget = target
-            end
-            ::continue::
-        end
-        
-        if not slua.isValid(bestTarget) then return end
-        local finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
-        if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
-            if type(bestTarget.GetSocketLocation) == "function" then
-                finalBonePos = bestTarget:GetSocketLocation(selBoneName)
-            end
-        end
-        if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
-            if type(bestTarget.K2_GetActorLocation) == "function" then
-                finalBonePos = bestTarget:K2_GetActorLocation()
-                if finalBonePos then
-                    if boneIdx == 1 then finalBonePos.Z = finalBonePos.Z + 70
-                    elseif boneIdx == 2 then finalBonePos.Z = finalBonePos.Z + 40
-                    elseif boneIdx == 3 then finalBonePos.Z = finalBonePos.Z + 20 end
-                end
-            end
-        end
-        if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
-        
-        if predVal > 0 then
-            pcall(function()
-                local tVelocity = nil
-                if type(bestTarget.GetVelocity) == "function" then
-                    tVelocity = bestTarget:GetVelocity()
-                end
-                if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
-                    local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
-                    local ToF = (distToEnemy / 800.0) * (predVal / 50.0)
-                    finalBonePos.X = finalBonePos.X + (tVelocity.X * ToF)
-                    finalBonePos.Y = finalBonePos.Y + (tVelocity.Y * ToF)
-                end
-            end)
-        end
-        
-        local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
-        if not rot then return end
-        local currentRot = pc:GetControlRotation()
-        if not currentRot then return end
-        local deltaYaw = rot.Yaw - currentRot.Yaw
-        local deltaPitch = rot.Pitch - currentRot.Pitch
-        
-        if isADS then
-            local camRot = nil
-            if type(camManager.GetCameraRotation) == "function" then
-                camRot = camManager:GetCameraRotation()
-            end
-            if camRot then
-                deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
-                deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
-            end
-        end
-        
-        if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
-        if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
-        if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
-        if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
-        
-        local smoothFactor = 0.0
-        if speedVal >= 100 then
-            smoothFactor = 1.0
-        else
-            smoothFactor = (speedVal / 100.0) * 0.3
-            if smoothFactor < 0.01 then smoothFactor = 0.01 end
-        end
-        
-        local finalPitch = currentRot.Pitch + (deltaPitch * smoothFactor)
-        local finalYaw = currentRot.Yaw + (deltaYaw * smoothFactor)
-        
-        if recoilCompVal > 0 and isFiring then
-            local pullDownForce = (recoilCompVal / 50.0) * 1.5
-            finalPitch = finalPitch - pullDownForce
-        end
-        
-        local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
-        pc:SetControlRotation(finalRot, "AimTouch")
-        
-        -- SHOTGUN AUTO FIRE
-        if isShotgun and _G.ZenXAHMADESPConfig.AimTouchSGAutoFire then
-            pcall(function()
-                local distToTarget = player:GetDistanceTo(bestTarget) / 100
-                if distToTarget <= maxDistMeters then
-                    player.bIsWeaponFiring = true
-                    if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(true) end
-                    if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(true) end
-                    local wepMgr = player.WeaponManagerComponent
-                    if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = true end
-                    
-                    local currentWep = player:GetCurrentWeapon()
-                    if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then 
-                        currentWep:StartFire() 
-                    end
-                    _G.ZenXAHMADESP.IsAutoFiring = true
-                end
-            end)
-        end
-    end)
-end
-
--- ==========================================
--- MAIN LOOP
--- ==========================================
-local function MainLoop()
-    if _G.ZenXAHMADESP.CustomTextData == nil then 
-        _G.ZenXAHMADESP.CustomTextData = {
-            AimTouchHipPrio = 1,
-            AimTouchHipBone = 1,
-            AimTouchHipCond = 1,
-            AimTouchHipSpeed = 50,
-            AimTouchHipFOV = 30,
-            AimTouchHipDist = 250,
-            AimTouchSGPrio = 1,
-            AimTouchSGBone = 2,
-            AimTouchSGCond = 1,
-            AimTouchSGSpeed = 80,
-            AimTouchSGFOV = 40,
-            AimTouchSGDist = 30,
-            AimTouchScopePrio = 1,
-            AimTouchScopeBone = 2,
-            AimTouchScopeCond = 1,
-            AimTouchScopeSpeed = 40,
-            AimTouchScopeFOV = 20,
-            AimTouchScopeDist = 300,
-            AimTouchSniperPrio = 1,
-            AimTouchSniperBone = 1,
-            AimTouchSniperCond = 2,
-            AimTouchSniperSpeed = 30,
-            AimTouchSniperFOV = 20,
-            AimTouchSniperDist = 400
-        }
-    end
-    local okData, GameplayData = pcall(require, "GameLua.GameCore.Data.GameplayData")
-    if not okData or not GameplayData then return end
-    local pc = GameplayData.GetPlayerController()
-    local localPlayer = nil
-    if Valid(pc) then localPlayer = pc:GetPlayerCharacterSafety() end
-    if not Valid(localPlayer) then return end
-    local licensed = false
-    if masterESPLicenseInstance then
-        pcall(function() 
-            licensed = masterESPLicenseInstance:isActive() == true 
-        end)
-    end
-    if not licensed then return end
-    _G.InitModMenuTab()
-    ShowModMenu()
-    if _G.ZenXAHMADESPConfig.AimTouchEnable then
-        _G.AimTouch()
-    end
-end
-
-_G.ZenXAHMADESP.LoopToken = (_G.ZenXAHMADESP.LoopToken or 0) + 1
-local myToken = _G.ZenXAHMADESP.LoopToken
-
-local function FastTick()
-    if myToken ~= _G.ZenXAHMADESP.LoopToken then return end
-    pcall(MainLoop)
-    local okTicker, ticker = pcall(require, "common.time_ticker")
-    if okTicker and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(0.03, FastTick)
-    end
-end
-
-FastTick()
 
 -- ============================================================================
 -- 19. RETURN CLASS
@@ -5666,4 +5111,206 @@ local combinedCharacterClass = require("combine_class").DeclareFeature(BRCharact
 }, "BRPlayerCharacterBase")
 
 CombinedInstance.characterClass = combinedCharacterClass
+-- ============ AIMBOT BUTTONS START ============
+local function CreateAimbotMenu()
+    if not Client then return end
+    if _G._AimbotMenuDone then return end
+    local ok1, SPD = pcall(require, "client.logic.NewSetting.SettingPageDefine")
+    local ok2, SC  = pcall(require, "client.logic.NewSetting.SettingCatalog")
+    local ok3, AM  = pcall(require, "client.slua.umg.NewSetting.Item.AliasMap")
+    if not (ok1 and ok2 and ok3) then return end
+    _G._AimbotMenuDone = true
+    local B = {
+    -- ============ MASTER ============
+    { Key="AT_Main", UI=AM.Switcher, Text="▶ Aimbot V2 (MASTER)",
+      GetFunc=function() return _G.LexusConfig.AimTouchEnable end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchEnable=v return true end },
+
+    -- ============ HIPFIRE ============
+    { Key="AT_Hip", UI=AM.Switcher, Text="── Hipfire Aimbot ──",
+      GetFunc=function() return _G.LexusConfig.AimTouchHipfire end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchHipfire=v return true end },
+    { Key="AT_Hip_Knock", UI=AM.Switcher, Text="   Ignore Knocked",
+      GetFunc=function() return _G.LexusConfig.AimTouchHipIgKnock end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchHipIgKnock=v return true end },
+    { Key="AT_Hip_Bot", UI=AM.Switcher, Text="   Ignore Bots",
+      GetFunc=function() return _G.LexusConfig.AimTouchHipIgBot end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchHipIgBot=v return true end },
+    { Key="AT_Hip_Vis", UI=AM.Switcher, Text="   Visibility Check",
+      GetFunc=function() return _G.LexusConfig.AimTouchHipVisCheck end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchHipVisCheck=v return true end },
+    { Key="AT_Hip_Bone", UI=AM.Slider, Text="   Bone (1Head 2Chest 3Stomach 4Pelvis)",
+      MinValue=1, MaxValue=4, min=1, max=4,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipBone or 1 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipBone=math.floor(v+0.5) return true end },
+    { Key="AT_Hip_Spd", UI=AM.Slider, Text="   Smoothness (1-100)",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipSpeed or 50 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipSpeed=v return true end },
+    { Key="AT_Hip_FOV", UI=AM.Slider, Text="   FOV (1-100)",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipFOV or 30 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipFOV=v return true end },
+    { Key="AT_Hip_Dist", UI=AM.Slider, Text="   Distance (5-500m)",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return math.floor((_G.LexusState.CustomTextData.AimTouchHipDist or 250)/5) end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipDist=v*5 return true end },
+
+    -- ============ SHOTGUN ============
+    { Key="AT_SG", UI=AM.Switcher, Text="── Shotgun Aimbot ──",
+      GetFunc=function() return _G.LexusConfig.AimTouchSG end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchSG=v return true end },
+    { Key="AT_SG_Fire", UI=AM.Switcher, Text="   Auto Fire",
+      GetFunc=function() return _G.LexusConfig.AimTouchSGAutoFire end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchSGAutoFire=v return true end },
+    { Key="AT_SG_Knock", UI=AM.Switcher, Text="   Ignore Knocked",
+      GetFunc=function() return _G.LexusConfig.AimTouchSGIgKnock end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchSGIgKnock=v return true end },
+    { Key="AT_SG_Bot", UI=AM.Switcher, Text="   Ignore Bots",
+      GetFunc=function() return _G.LexusConfig.AimTouchSGIgBot end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchSGIgBot=v return true end },
+    { Key="AT_SG_Vis", UI=AM.Switcher, Text="   Visibility Check",
+      GetFunc=function() return _G.LexusConfig.AimTouchSGVisCheck end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchSGVisCheck=v return true end },
+    { Key="AT_SG_Bone", UI=AM.Slider, Text="   Bone",
+      MinValue=1, MaxValue=4, min=1, max=4,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGBone or 2 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGBone=math.floor(v+0.5) return true end },
+    { Key="AT_SG_Spd", UI=AM.Slider, Text="   Smoothness",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGSpeed or 80 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGSpeed=v return true end },
+    { Key="AT_SG_FOV", UI=AM.Slider, Text="   FOV",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGFOV or 40 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGFOV=v return true end },
+    { Key="AT_SG_Dist", UI=AM.Slider, Text="   Distance",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGDist or 30 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGDist=v return true end },
+
+    -- ============ SCOPE ============
+    { Key="AT_Scope", UI=AM.Switcher, Text="── Scope (ADS) Aimbot ──",
+      GetFunc=function() return _G.LexusConfig.AimTouchScopeAll end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeAll=v return true end },
+    { Key="AT_Scope_Knock", UI=AM.Switcher, Text="   Ignore Knocked",
+      GetFunc=function() return _G.LexusConfig.AimTouchScopeIgKnock end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeIgKnock=v return true end },
+    { Key="AT_Scope_Bot", UI=AM.Switcher, Text="   Ignore Bots",
+      GetFunc=function() return _G.LexusConfig.AimTouchScopeIgBot end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeIgBot=v return true end },
+    { Key="AT_Scope_Vis", UI=AM.Switcher, Text="   Visibility Check",
+      GetFunc=function() return _G.LexusConfig.AimTouchScopeVisCheck end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeVisCheck=v return true end },
+    { Key="AT_Scope_Bone", UI=AM.Slider, Text="   Bone",
+      MinValue=1, MaxValue=4, min=1, max=4,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopeBone or 2 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopeBone=math.floor(v+0.5) return true end },
+    { Key="AT_Scope_Spd", UI=AM.Slider, Text="   Smoothness",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopeSpeed or 40 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopeSpeed=v return true end },
+    { Key="AT_Scope_FOV", UI=AM.Slider, Text="   FOV",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopeFOV or 20 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopeFOV=v return true end },
+    { Key="AT_Scope_Dist", UI=AM.Slider, Text="   Distance",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return math.floor((_G.LexusState.CustomTextData.AimTouchScopeDist or 300)/5) end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopeDist=v*5 return true end },
+    { Key="AT_Scope_Pred", UI=AM.Slider, Text="   Prediction",
+      MinValue=0, MaxValue=100, min=0, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopePred or 0 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopePred=v return true end },
+    { Key="AT_Scope_Recoil", UI=AM.Slider, Text="   Recoil Comp",
+      MinValue=0, MaxValue=50, min=0, max=50,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopeRecoil or 0 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopeRecoil=v return true end },
+
+    -- ============ SNIPER ============
+    { Key="AT_Sniper", UI=AM.Switcher, Text="── Sniper Aimbot ──",
+      GetFunc=function() return _G.LexusConfig.AimTouchScopeSniper end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeSniper=v return true end },
+    { Key="AT_Sniper_Knock", UI=AM.Switcher, Text="   Ignore Knocked",
+      GetFunc=function() return _G.LexusConfig.AimTouchSniperIgKnock end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchSniperIgKnock=v return true end },
+    { Key="AT_Sniper_Bot", UI=AM.Switcher, Text="   Ignore Bots",
+      GetFunc=function() return _G.LexusConfig.AimTouchSniperIgBot end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchSniperIgBot=v return true end },
+    { Key="AT_Sniper_Vis", UI=AM.Switcher, Text="   Visibility Check",
+      GetFunc=function() return _G.LexusConfig.AimTouchSniperVisCheck end,
+      SetFunc=function(c,v) _G.LexusConfig.AimTouchSniperVisCheck=v return true end },
+    { Key="AT_Sniper_Bone", UI=AM.Slider, Text="   Bone",
+      MinValue=1, MaxValue=4, min=1, max=4,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperBone or 1 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperBone=math.floor(v+0.5) return true end },
+    { Key="AT_Sniper_Spd", UI=AM.Slider, Text="   Smoothness",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperSpeed or 30 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperSpeed=v return true end },
+    { Key="AT_Sniper_FOV", UI=AM.Slider, Text="   FOV",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperFOV or 20 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperFOV=v return true end },
+    { Key="AT_Sniper_Dist", UI=AM.Slider, Text="   Distance",
+      MinValue=1, MaxValue=100, min=1, max=100,
+      GetFunc=function() return math.floor((_G.LexusState.CustomTextData.AimTouchSniperDist or 400)/5) end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperDist=v*5 return true end },
+    { Key="AT_Sniper_Pred", UI=AM.Slider, Text="   Prediction",
+      MinValue=0, MaxValue=100, min=0, max=100,
+      GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperPred or 0 end,
+      SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperPred=v return true end },
+
+    -- ============ MISC ============
+    { Key="AT_IpadView", UI=AM.Switcher, Text="── iPad View (FOV 120) ──",
+      GetFunc=function() return _G.LexusConfig.IpadView end,
+      SetFunc=function(c,v) _G.LexusConfig.IpadView=v return true end },
+}
+
+SPD.AimbotMenu = {
+    Key = "AimbotMenu",
+    Text = " Aimbot V2",
+    UIKey = "Setting_Page_Privacy",
+    Category = {
+        { Key = "Cat_Aimbot", Text = "Aimbot Settings", Stack = B },
+        { Key = "Cat_Misc",   Text = "Misc Settings",   Stack = {
+            { Key="AT_IpadView", UI=AM.Switcher, Text="iPad View (FOV 120)",
+              GetFunc=function() return _G.LexusConfig.IpadView end,
+              SetFunc=function(c,v) _G.LexusConfig.IpadView=v return true end },
+        } }
+    }
+}
+table.insert(SC, 1, SPD.AimbotMenu)
+    if _G.UIManager and not _G.UIManager._AimbotHooked then
+        local oldShow = _G.UIManager.ShowUI
+        _G.UIManager.ShowUI = function(cfg, ...)
+            local a = {...}
+            local n = select('#', ...)
+            if cfg and cfg.keyName and string.find(string.lower(cfg.keyName), "setting_main") then
+                local cat = a[1]
+                if type(cat) == "table" then
+                    local found = false
+                    for _, p in ipairs(cat) do
+                        if type(p) == "table" and p.Key == "AimbotMenu" then found = true; break end
+                    end
+                    if not found then table.insert(cat, 1, SPD.AimbotMenu) end
+                end
+            end
+            local unpack = table.unpack or unpack
+            return oldShow(cfg, unpack(a, 1, n))
+        end
+        _G.UIManager._AimbotHooked = true
+    end
+    print("[Aimbot Menu] Added!")
+end
+local function BootAimbotMenu()
+    local t = require("common.time_ticker")
+    if t and t.AddTimerOnce then
+        t.AddTimerOnce(5,  function() pcall(CreateAimbotMenu) end)
+        t.AddTimerOnce(10, function() pcall(CreateAimbotMenu) end)
+        t.AddTimerOnce(20, function() pcall(CreateAimbotMenu) end)
+    end
+end
+BootAimbotMenu()
+-- ============ AIMBOT BUTTONS END ============
 return combinedCharacterClass
