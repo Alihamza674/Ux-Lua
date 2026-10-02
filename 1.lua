@@ -1929,7 +1929,7 @@ pcall(function()
         local evD = _G.EVENTID_DATAMGR_DIAMOND_CHANGE
         if evD then EventSystem:postEvent(EVENTTYPE_DATA_MGR, evD, FAKE_SILVER_AMOUNT) end
     end
-    print("[FakeGCurrency] 已加载 - G=" .. FAKE_G_AMOUNT .. " UC=" .. FAKE_UC_AMOUNT .. " Silver=" .. FAKE_SILVER_AMOUNT)
+    print("[FakeGCurrency] Loaded - G=" .. FAKE_G_AMOUNT .. " UC=" .. FAKE_UC_AMOUNT .. " Silver=" .. FAKE_SILVER_AMOUNT)
 end)
 
 if _G.Mytimer_ticker then
@@ -1994,7 +1994,7 @@ pcall(function()
         return true  
     end
 
-    local CUSTOM_TEXT = "水原千鹤频道@lizardMH"
+    local CUSTOM_TEXT = "Chizuru Mizuhara Channel@lizardMH"
     local FONT_SIZE = 12.5
     local TEXT_SCALE = 1.0
     local TEXT_OFFSET_X = 0
@@ -2554,7 +2554,7 @@ end
 TryRefreshInGameMenu_Extra()   
 TryRefreshLobbyMenu_Extra()    
 
-print("[ExtraEmote] 额外表情已加载（大厅+局内）")
+print("[ExtraEmote] Extra emotesLoaded（Lobby + in-match）")
 
 pcall(function()
 
@@ -3484,9 +3484,9 @@ _G.GoldenLeavesTrail.Enabled = IsTrailEnabled()
 _G.GoldenLeavesTrail.TRAIL_ITEM_ID = GetTrailItemId()
 
 local TRAIL_NAMES = {
-    [4531001] = "星绘幻紫拖尾",
-    [4531002] = "浮光金叶拖尾",
-    [4541001] = "炫酷涂鸦足迹",
+    [4531001] = "Starry Purple Trail",
+    [4531002] = "Golden Leaf Trail",
+    [4541001] = "Cool Graffiti Footprint",
 }
 
 local SUPPORTED_TRAILS = {4531001, 4531002, 4541001}
@@ -3648,7 +3648,7 @@ function _G.GoldenLeavesTrail.SetType(trailId)
         pcall(_G.GoldenLeavesTrail.Apply)
     end
     local name = TRAIL_NAMES[trailId] or tostring(trailId)
-    print("[Trail] 切换到: " .. name)
+    print("[Trail] Switched to: " .. name)
 end
 
 local function HookPufferManager()
@@ -3810,12 +3810,12 @@ local function EnsureTrailApplied()
     local inMatch = IsInMatch()
 
     if inMatch and not _wasInMatch then
-        print("[Trail] 检测到进入对局，重新应用拖尾")
+        print("[Trail] Match entered, reapplying trail")
         _G.GoldenLeavesTrail.Apply()
     end
 
     if not inMatch and _wasInMatch then
-        print("[Trail] 离开对局，停止拖尾")
+        print("[Trail] Match exited, stopping trail")
         _G.GoldenLeavesTrail.Stop()
     end
 
@@ -3868,10 +3868,10 @@ end
 _G.GoldenLeavesTrail.IsInMatch = IsInMatch
 _G.GoldenLeavesTrail.ApplyToChar = ApplyTrailEffect
 _G.GoldenLeavesTrail.GetTrailName = function(id)
-    return TRAIL_NAMES[id] or "未知拖尾"
+    return TRAIL_NAMES[id] or "Unknown Trail"
 end
 
-print("[Trail] 已加载，当前拖尾: " .. (TRAIL_NAMES[_G.GoldenLeavesTrail.TRAIL_ITEM_ID] or "未知") .. " (ID: " .. tostring(_G.GoldenLeavesTrail.TRAIL_ITEM_ID) .. ")")
+print("[Trail] Loaded, Current Trail: " .. (TRAIL_NAMES[_G.GoldenLeavesTrail.TRAIL_ITEM_ID] or "Unknown") .. " (ID: " .. tostring(_G.GoldenLeavesTrail.TRAIL_ITEM_ID) .. ")")
 
 do
 local M = {}
@@ -5060,7 +5060,7 @@ local function apply_extra_settings()
         DataMgr.roleData.headIconUrl = AVATAR_ID
         DataMgr.roleData.pic_url_check_open = true
         DataMgr.roleData.cur_avatar_box_id = AVATAR_BOX_ID
-        print(string.format("[SetRoleInfo] 已设置: 等级=%d, 头像=%d, 头像框=%d", PLAYER_LEVEL, AVATAR_ID, AVATAR_BOX_ID))
+        print(string.format("[SetRoleInfo] Set: Level=%d, Avatar=%d, Avatar Frame=%d", PLAYER_LEVEL, AVATAR_ID, AVATAR_BOX_ID))
     end
 end
 
@@ -5593,7 +5593,7 @@ apply_all()
 install_refresh_hooks()
 
 log_msg(string.format(
-    "征服者 %d | 星星=%d | 积分=%d | 旅程徽章=%d | 休闲赛季段位=%d | 等级=%d",
+    "Conqueror %d | Stars=%d | Points=%d | Journey Badges=%d | Casual Season Rank=%d | Level=%d",
     CURRENT_SEGMENT, CONQUEROR_STARS, get_star_rating(),
     JOURNEY_BADGE_LEVEL, get_season_series_segment_id(), PLAYER_LEVEL
 ))
@@ -5815,7 +5815,7 @@ local function install_collect_hooks()
     end
     inject_collect_data()
 
-    print("[收藏伪造] Hook已安装，等级=" .. _G.FAKE_LEVEL .. " 积分=" .. _G.FAKE_SCORE)
+    print("[Collection Spoof] Hook installed，Level=" .. _G.FAKE_LEVEL .. " Points=" .. _G.FAKE_SCORE)
 end
 
 _G.CollectFake = {
@@ -6161,7 +6161,7 @@ function lizardMH_Config._confirmSkinInputPopup(ui)
     if not num then
         lizardMH_Config._skinInputConfirming = false
         if BattleNormalTips then
-            pcall(BattleNormalTips, "请输入正确的皮肤ID", nil, 3)
+            pcall(BattleNormalTips, "Please enter a valid skin ID", nil, 3)
         end
         return false
     end
@@ -6294,7 +6294,7 @@ function lizardMH_Config.ShowNumberInputPopup(opts)
 
     lizardMH_Config._numInput = {
         token = lizardMH_Config._skinPopupOpenToken,
-        title = opts.title or "皮肤ID",
+        title = opts.title or "Skin ID",
         value = tostring(math.floor(tonumber(opts.value) or 1)),
         min = opts.min or 1,
         max = opts.max or 9999999999,
@@ -6322,41 +6322,41 @@ end
 
 local SuitSettingTab = _G.SuitSettingTab or {}
 _G.SuitSettingTab = SuitSettingTab
-SuitSettingTab.TAB_NAME = "人物套装"
+SuitSettingTab.TAB_NAME = "Character Outfit"
 
 SuitSettingTab.SUIT_ITEMS = {
 
-{ key = "SHIRT",     label = "套装/Suit",     default = 403003 },
-{ key = "HAIR",      label = "发型/Hair",     default = 40604012 },
-{ key = "HAT",       label = "帽子/Hat",      default = 1402218 },
-{ key = "FACE",      label = "脸型/Face",     default = 1400165 },
-{ key = "MASK",      label = "面饰/Mask",     default = 1404198 },
-{ key = "GLOVES",    label = "手套/Gloves",   default = 0 },
-{ key = "PANT",      label = "裤子/Pants",    default = 1404002 },
-{ key = "SHOE",      label = "鞋子/Shoes",    default = 1404003 },
-{ key = "PARACHUTE", label = "降落伞/Parachute", default = 1401469 },
-{ key = "GLIDER",    label = "滑翔翼/Glider", default = 4151133 },
+{ key = "SHIRT",     label = "Suit/Suit",     default = 403003 },
+{ key = "HAIR",      label = "Hair/Hair",     default = 40604012 },
+{ key = "HAT",       label = "Hat/Hat",      default = 1402218 },
+{ key = "FACE",      label = "Face/Face",     default = 1400165 },
+{ key = "MASK",      label = "Mask/Mask",     default = 1404198 },
+{ key = "GLOVES",    label = "Gloves/Gloves",   default = 0 },
+{ key = "PANT",      label = "Pants/Pants",    default = 1404002 },
+{ key = "SHOE",      label = "Shoes/Shoes",    default = 1404003 },
+{ key = "PARACHUTE", label = "Parachute/Parachute", default = 1401469 },
+{ key = "GLIDER",    label = "Glider/Glider", default = 4151133 },
 
-{ key = "BACKPACK1", label = "1级背包/Backpack Lv.1", default = 0 },
-{ key = "BACKPACK2", label = "2级背包/Backpack Lv.2", default = 0 },
-{ key = "BACKPACK3", label = "3级背包/Backpack Lv.3", default = 0 },
-{ key = "BACKPACK4", label = "4级背包/Backpack Lv.4", default = 0 },
-{ key = "BACKPACK5", label = "5级背包/Backpack Lv.5", default = 0 },
-{ key = "BACKPACK6", label = "6级背包/Backpack Lv.6", default = 0 },
+{ key = "BACKPACK1", label = "1 Backpack Lv./Backpack Lv.1", default = 0 },
+{ key = "BACKPACK2", label = "2 Backpack Lv./Backpack Lv.2", default = 0 },
+{ key = "BACKPACK3", label = "3 Backpack Lv./Backpack Lv.3", default = 0 },
+{ key = "BACKPACK4", label = "4 Backpack Lv./Backpack Lv.4", default = 0 },
+{ key = "BACKPACK5", label = "5 Backpack Lv./Backpack Lv.5", default = 0 },
+{ key = "BACKPACK6", label = "6 Backpack Lv./Backpack Lv.6", default = 0 },
 
-{ key = "HELMET1",   label = "1级头盔/Helmet Lv.1", default = 0 },
-{ key = "HELMET2",   label = "2级头盔/Helmet Lv.2", default = 0 },
-{ key = "HELMET3",   label = "3级头盔/Helmet Lv.3", default = 0 },
-{ key = "HELMET4",   label = "4级头盔/Helmet Lv.4", default = 0 },
-{ key = "HELMET5",   label = "5级头盔/Helmet Lv.5", default = 0 },
-{ key = "HELMET6",   label = "6级头盔/Helmet Lv.6", default = 0 },
+{ key = "HELMET1",   label = "1 Helmet Lv./Helmet Lv.1", default = 0 },
+{ key = "HELMET2",   label = "2 Helmet Lv./Helmet Lv.2", default = 0 },
+{ key = "HELMET3",   label = "3 Helmet Lv./Helmet Lv.3", default = 0 },
+{ key = "HELMET4",   label = "4 Helmet Lv./Helmet Lv.4", default = 0 },
+{ key = "HELMET5",   label = "5 Helmet Lv./Helmet Lv.5", default = 0 },
+{ key = "HELMET6",   label = "6 Helmet Lv./Helmet Lv.6", default = 0 },
 
-{ key = "ARMOR1",    label = "1级防弹衣/Armor Lv.1", default = 0 },
-{ key = "ARMOR2",    label = "2级防弹衣/Armor Lv.2", default = 0 },
-{ key = "ARMOR3",    label = "3级防弹衣/Armor Lv.3", default = 0 },
-{ key = "ARMOR4",    label = "4级防弹衣/Armor Lv.4", default = 0 },
-{ key = "ARMOR5",    label = "5级防弹衣/Armor Lv.5", default = 0 },
-{ key = "ARMOR6",    label = "6级防弹衣/Armor Lv.6", default = 0 },
+{ key = "ARMOR1",    label = "1 Armor Lv./Armor Lv.1", default = 0 },
+{ key = "ARMOR2",    label = "2 Armor Lv./Armor Lv.2", default = 0 },
+{ key = "ARMOR3",    label = "3 Armor Lv./Armor Lv.3", default = 0 },
+{ key = "ARMOR4",    label = "4 Armor Lv./Armor Lv.4", default = 0 },
+{ key = "ARMOR5",    label = "5 Armor Lv./Armor Lv.5", default = 0 },
+{ key = "ARMOR6",    label = "6 Armor Lv./Armor Lv.6", default = 0 },
 }
 
 SuitSettingTab.PET_SKIN_LIST = {
@@ -6381,7 +6381,7 @@ function SuitSettingTab.BuildStack()
 
     local stack = {}
 
-    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("基础穿戴") })
+    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("Basic Equipment") })
     table.insert(stack, { UI = AliasMap.Spacer, Height = 10 })
 
     for _, key in ipairs(BASIC_WEAR_KEYS) do
@@ -6395,13 +6395,13 @@ function SuitSettingTab.BuildStack()
                 GetFunc = function()
                     local val = lizardMH_Config.Get(item.key, item.default)
                     if val == 0 then
-                        return "关闭"
+                        return "Off"
                     end
                     return tostring(val)
                 end,
                 SetFunc = function()
                     lizardMH_Config.ShowNumberInputPopup({
-                        title = item.label .. " (输入0=关闭修改)",
+                        title = item.label .. " (Enter 0 = disable modification)",
                         value = lizardMH_Config.Get(item.key, item.default),
                         min = 0,
                         max = 9999999999,
@@ -6425,14 +6425,14 @@ function SuitSettingTab.BuildStack()
 end
 
 table.insert(stack, { UI = AliasMap.Spacer, Height = 15 })
-table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("宠物皮肤/Pet Skin") })
+table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("Pet Skin/Pet Skin") })
 table.insert(stack, { UI = AliasMap.Spacer, Height = 10 })
 
 table.insert(stack, {
     Key = "PetSkinSlider",
     UI = AliasMap.Slider,
-    Text = "宠物皮肤/Pet Skin",
-    Help = "滑动切换宠物皮肤（共 " .. #SuitSettingTab.PET_SKIN_LIST .. " 种）\nSlide to switch pet skin (" .. #SuitSettingTab.PET_SKIN_LIST .. " types)",
+    Text = "Pet Skin/Pet Skin",
+    Help = "Slide to switch pet skin(total " .. #SuitSettingTab.PET_SKIN_LIST .. " types)\nSlide to switch pet skin (" .. #SuitSettingTab.PET_SKIN_LIST .. " types)",
     Min = 1,
     Max = #SuitSettingTab.PET_SKIN_LIST,
     IsPercent = false,
@@ -6458,7 +6458,7 @@ table.insert(stack, {
             pcall(_G.ApplyPetSkinInGame)
         end
 
-        print("[Pet] 切换到: " .. tostring(petId) .. " (索引: " .. tostring(index) .. ")")
+        print("[Pet] Switched to: " .. tostring(petId) .. " (Index: " .. tostring(index) .. ")")
         return true
     end
 })
@@ -6466,7 +6466,7 @@ table.insert(stack, {
 table.insert(stack, {
     Key = "PetSkinDisplay",
     UI = AliasMap.OpenWindow,
-    Text = "  └ 当前宠物ID/Current Pet ID",
+    Text = "  └ Current Pet ID/Current Pet ID",
     GetFunc = function()
         local index = lizardMH_Config.Get("PETSKIN", 1)
         if index < 1 or index > #SuitSettingTab.PET_SKIN_LIST then
@@ -6481,7 +6481,7 @@ table.insert(stack, {
 
 table.insert(stack, { UI = AliasMap.Spacer, Height = 15 })
 
-    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("背包皮肤") })
+    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("Backpack Skin") })
     table.insert(stack, { UI = AliasMap.Spacer, Height = 10 })
 
     local backpackKeys = { "BACKPACK1", "BACKPACK2", "BACKPACK3", "BACKPACK4", "BACKPACK5", "BACKPACK6" }
@@ -6495,12 +6495,12 @@ table.insert(stack, { UI = AliasMap.Spacer, Height = 15 })
                     Text = CustomTitleLoc.Register(item.label),
                     GetFunc = function()
                         local val = lizardMH_Config.Get(item.key, item.default)
-                        if val == 0 then return "不修改" end
+                        if val == 0 then return "Do not modify" end
                         return tostring(val)
                     end,
                     SetFunc = function()
                         lizardMH_Config.ShowNumberInputPopup({
-                            title = item.label .. " (0=不修改)",
+                            title = item.label .. " (0=Do not modify)",
                             value = lizardMH_Config.Get(item.key, item.default),
                             min = 0,
                             max = 9999999999,
@@ -6523,7 +6523,7 @@ table.insert(stack, { UI = AliasMap.Spacer, Height = 15 })
     end
 
     table.insert(stack, { UI = AliasMap.Spacer, Height = 15 })
-    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("头盔皮肤") })
+    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("Helmet Skin") })
     table.insert(stack, { UI = AliasMap.Spacer, Height = 10 })
 
     local helmetKeys = { "HELMET1", "HELMET2", "HELMET3", "HELMET4", "HELMET5", "HELMET6" }
@@ -6537,12 +6537,12 @@ table.insert(stack, { UI = AliasMap.Spacer, Height = 15 })
                     Text = CustomTitleLoc.Register(item.label),
                     GetFunc = function()
                         local val = lizardMH_Config.Get(item.key, item.default)
-                        if val == 0 then return "不修改" end
+                        if val == 0 then return "Do not modify" end
                         return tostring(val)
                     end,
                     SetFunc = function()
                         lizardMH_Config.ShowNumberInputPopup({
-                            title = item.label .. " (0=不修改)",
+                            title = item.label .. " (0=Do not modify)",
                             value = lizardMH_Config.Get(item.key, item.default),
                             min = 0,
                             max = 9999999999,
@@ -6565,7 +6565,7 @@ table.insert(stack, { UI = AliasMap.Spacer, Height = 15 })
     end
 
     table.insert(stack, { UI = AliasMap.Spacer, Height = 15 })
-    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("防弹衣皮肤") })
+    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("Armor Skin") })
     table.insert(stack, { UI = AliasMap.Spacer, Height = 10 })
 
     local armorKeys = { "ARMOR1", "ARMOR2", "ARMOR3", "ARMOR4", "ARMOR5", "ARMOR6" }
@@ -6579,12 +6579,12 @@ table.insert(stack, { UI = AliasMap.Spacer, Height = 15 })
                     Text = CustomTitleLoc.Register(item.label),
                     GetFunc = function()
                         local val = lizardMH_Config.Get(item.key, item.default)
-                        if val == 0 then return "不修改" end
+                        if val == 0 then return "Do not modify" end
                         return tostring(val)
                     end,
                     SetFunc = function()
                         lizardMH_Config.ShowNumberInputPopup({
-                            title = item.label .. " (0=不修改)",
+                            title = item.label .. " (0=Do not modify)",
                             value = lizardMH_Config.Get(item.key, item.default),
                             min = 0,
                             max = 9999999999,
@@ -6611,43 +6611,43 @@ end
 
     local WeaponSettingTab = _G.WeaponSettingTab or {}
     _G.WeaponSettingTab = WeaponSettingTab
-    WeaponSettingTab.TAB_NAME = "武器皮肤"
+    WeaponSettingTab.TAB_NAME = "Weapon Skin"
 
     WeaponSettingTab.WEAPON_GROUPS = {
         {
-            title = "突击步枪",
+            title = "Assault Rifle",
             weapons = {
                 "AKM", "M16A4", "SCAR", "M416", "GROZA", "AUG", "QBZ", "M762",
                 "Mk47", "G36C", "HoneyPot", "FAMAS", "ASM", "ACE32"
             }
         },
         {
-            title = "冲锋枪",
+            title = "Submachine Gun",
             weapons = {
                 "UZI", "UMP", "VECTOR", "THOMPSON", "BIZON", "MP5K", "JS9", "P90"
             }
         },
         {
-            title = "狙击枪/射手步枪",
+            title = "Sniper Rifle/Marksman Rifle",
             weapons = {
                 "K98", "M24", "AWM", "SKS", "VSS", "Mini14", "MK14", "Win94",
                 "M1Garand", "SLR", "QBU", "Mosin", "AMR", "Mk12", "DSR"
             }
         },
         {
-            title = "霰弹枪",
+            title = "Shotgun",
             weapons = {
                 "S686", "S1897", "S12K", "DBS", "M1014", "NS2000"
             }
         },
         {
-            title = "轻机枪",
+            title = "Light Machine Gun",
             weapons = {
                 "M249", "DP28", "MG3"
             }
         },
         {
-            title = "近战武器",
+            title = "Melee Weapon",
             weapons = {
                 "PAN", "DAGGER", "Machete"
             }
@@ -6713,7 +6713,7 @@ end
             table.insert(stack, {
                 Key = inputKey,
                 UI = AliasMap.OpenWindow,
-                Text = "  └ 自定义皮肤ID",
+                Text = "  └ Custom Skin ID",
                 GetFunc = function()
 
                     local savedCustomId = lizardMH_Config.Get("CUSTOM_" .. weaponKey, 0)
@@ -6727,7 +6727,7 @@ end
                         currentSkinID = _G.WeaponSkinID[weaponID] or 0
                     end
                     if currentSkinID == 0 then
-                        return "未设置"
+                        return "Not set"
                     end
                     return tostring(currentSkinID)
                 end,
@@ -6739,7 +6739,7 @@ end
                     end
 
                     lizardMH_Config.ShowNumberInputPopup({
-                        title = weaponName .. " - 输入皮肤ID",
+                        title = weaponName .. " - Enter Skin ID",
                         value = currentSkinID,
                         min = 1,
                         max = 9999999999,
@@ -6775,7 +6775,7 @@ end
 
 local VehicleSettingTab = _G.VehicleSettingTab or {}
 _G.VehicleSettingTab = VehicleSettingTab
-VehicleSettingTab.TAB_NAME = "载具皮肤"
+VehicleSettingTab.TAB_NAME = "Vehicle Skin"
 
 VehicleSettingTab.VEHICLE_KEYS = {
     "DACIA", "COUPERB", "BUGGY", "UAZ", "MOTO", "SIDECARMOTO",
@@ -6784,22 +6784,22 @@ VehicleSettingTab.VEHICLE_KEYS = {
 }
 
 VehicleSettingTab.VEHICLE_NAMES = {
-    DACIA = "轿车 / Dacia",
-    COUPERB = "双座跑车 / Coupe RB",
-    BUGGY = "越野车 / Buggy",
-    UAZ = "吉普车 / UAZ",
-    MOTO = "摩托车 / Motorcycle",
-    SIDECARMOTO = "三人摩托 / Sidecar Motorcycle",
-    BLOOMSC = "踏板摩托 / Scooter",
-    RONY = "罗尼皮卡 / Rony Pickup",
-    RZR = "全地形车 / RZR",
-    BIGFOOT = "大脚车 / Bigfoot",
-    HORSE = "马 / Horse",
-    MINIBUS = "巴士 / Minibus",
-    BOAT = "快艇 / Boat",
-    ROADSTER = "敞篷跑车 / Roadster",
+    DACIA = "Sedan / Dacia",
+    COUPERB = "Two-seat sports car / Coupe RB",
+    BUGGY = "Buggy / Buggy",
+    UAZ = "Jeep / UAZ",
+    MOTO = "Motorcycle / Motorcycle",
+    SIDECARMOTO = "Sidecar Motorcycle / Sidecar Motorcycle",
+    BLOOMSC = "Scooter / Scooter",
+    RONY = "Rony Pickup / Rony Pickup",
+    RZR = "All-terrain vehicle / RZR",
+    BIGFOOT = "Bigfoot / Bigfoot",
+    HORSE = "Horse / Horse",
+    MINIBUS = "Bus / Minibus",
+    BOAT = "Speedboat / Boat",
+    ROADSTER = "Convertible sports car / Roadster",
     MIRADO = "Mirado / Mirado",
-    MIRADOC = "Mirado敞篷 / Mirado Convertible"
+    MIRADOC = "MiradoConvertible / Mirado Convertible"
 }
 
 function VehicleSettingTab.BuildStack()
@@ -6810,7 +6810,7 @@ function VehicleSettingTab.BuildStack()
 
     local stack = {}
 
-    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("载具皮肤") })
+    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("Vehicle Skin") })
     table.insert(stack, { UI = AliasMap.Spacer, Height = 10 })
 
     for _, key in ipairs(VehicleSettingTab.VEHICLE_KEYS) do
@@ -6840,18 +6840,18 @@ end
 
 local BoxSettingTab = _G.BoxSettingTab or {}
 _G.BoxSettingTab = BoxSettingTab
-BoxSettingTab.TAB_NAME = "功能开关"
-BoxSettingTab.SECTION_TITLE = "盒子皮肤"
-BoxSettingTab.WEATHER_TITLE = "天气效果"
-BoxSettingTab.CAMERA_TITLE = "相机设置"
-BoxSettingTab.TRAIL_TITLE = "移动拖尾特效"  
+BoxSettingTab.TAB_NAME = "Feature Switches"
+BoxSettingTab.SECTION_TITLE = "Box Skin"
+BoxSettingTab.WEATHER_TITLE = "Weather Effects"
+BoxSettingTab.CAMERA_TITLE = "Camera Settings"
+BoxSettingTab.TRAIL_TITLE = "Movement Trail Effect"  
 BoxSettingTab.WEATHER_OPTIONS = {
-    "无天气", "下雨", "下雪", "暴风雪", "雷暴"
+    "No Weather", "Rain", "Snow", "Blizzard", "Thunderstorm"
 }
 BoxSettingTab._weatherSwitcherText = nil
 BoxSettingTab._trailSwitcherText = nil  
 
-BoxSettingTab.WATERMARK_TITLE = "界面水印"
+BoxSettingTab.WATERMARK_TITLE = "Interface Watermark"
 
 function BoxSettingTab.BuildStack()
     CustomTitleLoc.Patch()
@@ -6870,8 +6870,8 @@ function BoxSettingTab.BuildStack()
     table.insert(stack, {
         Key = "DeadBoxSkinEnable",
         UI = AliasMap.Switcher,
-        Text = "开启死亡盒子皮肤 / Enable Dead Box Skin",
-        Help = "开启后，死亡盒子会显示为您当前使用的武器或载具皮肤效果\nWhen enabled, death box will show your current weapon or vehicle skin effect",
+        Text = "Enable Dead Box Skin / Enable Dead Box Skin",
+        Help = "When enabled, the death box will display your currently used weapon or vehicle skin effect\nWhen enabled, death box will show your current weapon or vehicle skin effect",
         GetFunc = function()
             local value = lizardMH_Config.Get("DEADBOX_SKIN", 1)
             return value == 1
@@ -6890,14 +6890,14 @@ function BoxSettingTab.BuildStack()
 
     table.insert(stack, { UI = AliasMap.Spacer, Height = 20 })
 
-    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("武器检视动画 / Weapon Inspection Animation") })
+    table.insert(stack, { UI = AliasMap.Title, Text = CustomTitleLoc.Register("Weapon Inspection Animation / Weapon Inspection Animation") })
     table.insert(stack, { UI = AliasMap.Spacer, Height = 10 })
 
     table.insert(stack, {
         Key = "WeaponAnimEnable",
         UI = AliasMap.Switcher,
-        Text = "开启武器检视动画 / Enable Weapon Inspection",
-        Help = "开启后，手持支持检视的武器时会自动播放检视动画\n支持升级枪械（如M416、AKM等）\nAuto-play inspection animation for supported weapons (M416, AKM, etc.)",
+        Text = "Enable Weapon Inspection / Enable Weapon Inspection",
+        Help = "When enabled, supported held weapons will automatically play the inspection animation\nSupports upgradeable weapons(e.g. M416, AKM)\nAuto-play inspection animation for supported weapons (M416, AKM, etc.)",
         GetFunc = function()
             local value = lizardMH_Config.Get("WEAPON_ANIM", 1)
             return value == 1
@@ -6922,15 +6922,15 @@ function BoxSettingTab.BuildStack()
 
     table.insert(stack, {
         UI = AliasMap.Title,
-        Text = CustomTitleLoc.Register("界面水印 / Watermark")
+        Text = CustomTitleLoc.Register("Interface Watermark / Watermark")
     })
     table.insert(stack, { UI = AliasMap.Spacer, Height = 10 })
 
     table.insert(stack, {
         Key = "WatermarkEnable",
         UI = AliasMap.Switcher,
-        Text = "显示频道水印 / Show Channel Watermark",
-        Help = "开启后在游戏画面上方显示 @lizardMH 水印文字\nShow @lizardMH watermark on game screen",
+        Text = "Show Channel Watermark / Show Channel Watermark",
+        Help = "When enabled, the watermark text will be shown at the top of the game screen @lizardMH watermark text\nShow @lizardMH watermark on game screen",
         GetFunc = function()
             local value = lizardMH_Config.Get("WATERMARK", 1)
             return value == 1
@@ -6958,8 +6958,8 @@ function BoxSettingTab.BuildStack()
     table.insert(stack, {
         Key = "TrailEnable",
         UI = AliasMap.Switcher,
-        Text = "开启移动拖尾特效 / Enable Movement Trail",
-        Help = "开启后角色移动时显示拖尾残影特效（仅比赛对局生效）\nShow trail effect when moving (match only)",
+        Text = "Enable Movement Trail / Enable Movement Trail",
+        Help = "When enabled, a trail afterimage effect is shown while the character moves (match only)\nShow trail effect when moving (match only)",
         GetFunc = function()
             local value = lizardMH_Config.Get("TRAIL_ENABLE", 1)
             return value == 1
@@ -6986,17 +6986,17 @@ function BoxSettingTab.BuildStack()
 
     if not BoxSettingTab._trailSwitcherText then
         BoxSettingTab._trailSwitcherText = CustomTitleLoc.RegisterList({
-            "浮光金叶拖尾 / Golden Leaf Trail",
-            "星绘幻紫拖尾 / Star Purple Trail",
-            "炫酷涂鸦足迹 / Cool Graffiti Footprint"
+            "Golden Leaf Trail / Golden Leaf Trail",
+            "Starry Purple Trail / Star Purple Trail",
+            "Cool Graffiti Footprint / Cool Graffiti Footprint"
         })
     end
 
     table.insert(stack, {
         Key = "TrailType",
         UI = AliasMap.Switcher,
-        Text = "拖尾类型 / Trail Type",
-        Help = "选择移动时显示的拖尾特效类型\nSelect the trail effect type",
+        Text = "Trail Type / Trail Type",
+        Help = "Select the trail effect type shown while moving\nSelect the trail effect type",
         SwitcherText = BoxSettingTab._trailSwitcherText,
         SwitcherValue = { 4531002, 4531001, 4541001 },  
         GetFunc = function()
@@ -7025,19 +7025,19 @@ function BoxSettingTab.BuildStack()
 
     if not BoxSettingTab._weatherSwitcherText then
         BoxSettingTab._weatherSwitcherText = CustomTitleLoc.RegisterList({
-            "无天气 / No Weather",
-            "下雨 / Rain",
-            "下雪 / Snow",
-            "暴风雪 / Blizzard",
-            "雷暴 / Thunderstorm"
+            "No Weather / No Weather",
+            "Rain / Rain",
+            "Snow / Snow",
+            "Blizzard / Blizzard",
+            "Thunderstorm / Thunderstorm"
         })
     end
 
     table.insert(stack, {
         Key = "WeatherMode",
         UI = AliasMap.Switcher,
-        Text = "天气类型 / Weather Type",
-        Help = "选择对局中的天气效果\nSelect weather effect in match\n0=晴天/Sunny 1=下雨/Rain 2=下雪/Snow 3=暴风雪/Blizzard 4=雷暴/Thunderstorm",
+        Text = "Weather Type / Weather Type",
+        Help = "Select the weather effect in the match\nSelect weather effect in match\n0=Sunny/Sunny 1=Rain/Rain 2=Snow/Snow 3=Blizzard/Blizzard 4=Thunderstorm/Thunderstorm",
         SwitcherText = BoxSettingTab._weatherSwitcherText,
         SwitcherValue = { 0, 1, 2, 3, 4 },
         GetFunc = function()
@@ -7065,8 +7065,8 @@ function BoxSettingTab.BuildStack()
     table.insert(stack, {
         Key = "FOVEnable",
         UI = AliasMap.Switcher,
-        Text = "开启广角 / Enable FOV",
-        Help = "开启后可以调整相机视野范围\nEnable to adjust camera field of view",
+        Text = "Enable FOV / Enable FOV",
+        Help = "When enabled, you can adjust the camera field of view\nEnable to adjust camera field of view",
         GetFunc = function()
             local value = lizardMH_Config.Get("FOV_ENABLE", 1)
             return value == 1
@@ -7086,8 +7086,8 @@ function BoxSettingTab.BuildStack()
     table.insert(stack, {
         Key = "FOVValue",
         UI = AliasMap.Slider,
-        Text = "广角度数 / FOV Value",
-        Help = "调整相机视野范围 (90-120)\nAdjust camera field of view (90-120)",
+        Text = "FOV Value / FOV Value",
+        Help = "Adjust the camera field of view (90-120)\nAdjust camera field of view (90-120)",
         Min = 90,
         Max = 120,
         IsPercent = false,
@@ -7239,7 +7239,7 @@ local function notify(msg)
 end
 
 _G.TrainingDeadBox._running = true
-notify("盒子初始化成功")
+notify("Box initialization successful")
 
 do
     local PlayerDeadBoxPath = "/Game/BluePrints/PickUp/Special/PlayerDeadBox.PlayerDeadBox"
@@ -8784,7 +8784,7 @@ if not _G.WeaponAnimationModule then
         if _G.lizardMH_Config and _G.lizardMH_Config.Set then
             _G.lizardMH_Config.Set("WEAPON_ANIM", WAM._enabled and 1 or 0)
         end
-        print("[WeaponAnim] 开关状态: " .. tostring(WAM._enabled))
+        print("[WeaponAnim] Enabled state: " .. tostring(WAM._enabled))
     end
 
     function WAM.IsEnabled()
@@ -9112,11 +9112,11 @@ pcall(function()
 
     local title = "Announcement"
     local content = [[
-重要通知：
-1.全网首发不一秒裸奔美化
-2.搭配外挂被封禁，后果自负！
-3.请勿搭配任何改文件，出现封禁情况直接给你封禁
-官方唯一频道 @lizardMH
+IMPORTANT NOTICE：
+1.First-release cosmetic package; no exposed loading
+2.Using this with cheats may result in a ban; use at your own risk!
+3.Do not use with any modified files; if a ban occurs, you are responsible
+Official channel @lizardMH
 ]]
 
     CommonMsgBoxMgr.Show(4, title, content, nil)
