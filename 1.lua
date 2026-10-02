@@ -171,7 +171,7 @@ end
 -- ========== BoxESP Master Table ==========
 local BoxESP = {
     bActive = true,
-    bShowLines = true,
+    bShowLines = false,
     bShowCounter = true,
     ESPCanvas = nil,
     BoxWidgets = {},
@@ -248,67 +248,11 @@ end
 function BoxESP.CreateESPWidget(ParentCanvas)
     if not FLinearColor or not FVector2D then return nil end
 
-    local CornerContainer = CGame:NewObjectFromPath("/Script/UMG.CanvasPanel", ParentCanvas)
-    if not IsValid(CornerContainer) then return nil end
-
-    local CornerMainSlot = ParentCanvas:AddChildToCanvas(CornerContainer)
-    if not CornerMainSlot then return nil end
-
-    CornerMainSlot:SetAutoSize(false)
-    CornerMainSlot:SetZOrder(995)
-    CornerMainSlot:SetAlignment(FVector2D(0.5, 0.5))
-
-    local whiteColor = FLinearColor(
-        BoxESP.CornerColor.R,
-        BoxESP.CornerColor.G,
-        BoxESP.CornerColor.B,
-        BoxESP.CornerColor.A
-    )
-
-    local function CreateBorderLine()
-        local border = CGame:NewObjectFromPath("/Script/UMG.Border", CornerContainer)
-        if border and IsValid(border) then
-            border:SetBrushColor(whiteColor)
-            border:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-            local slot = CornerContainer:AddChildToCanvas(border)
-            if slot then slot:SetAutoSize(false) end
-            return { widget = border, slot = slot }
-        end
-        return nil
-    end
-
-    local CornerLines = {
-        TopLeft_H = CreateBorderLine(),
-        TopLeft_V = CreateBorderLine(),
-        TopRight_H = CreateBorderLine(),
-        TopRight_V = CreateBorderLine(),
-        BottomLeft_H = CreateBorderLine(),
-        BottomLeft_V = CreateBorderLine(),
-        BottomRight_H = CreateBorderLine(),
-        BottomRight_V = CreateBorderLine()
-    }
-
-    local BgImage = CGame:NewObjectFromPath("/Script/UMG.Image", ParentCanvas)
-    if not IsValid(BgImage) then return nil end
-    BgImage:SetColorAndOpacity(FLinearColor(BoxESP.HealthBgColor.R, BoxESP.HealthBgColor.G, BoxESP.HealthBgColor.B, BoxESP.HealthBgColor.A))
-    BgImage:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-
-    local BgSlot = ParentCanvas:AddChildToCanvas(BgImage)
-    if not BgSlot then return nil end
-    BgSlot:SetAutoSize(false)
-    BgSlot:SetZOrder(998)
-    BgSlot:SetAlignment(FVector2D(0.5, 1.0))
-
-    local HealthImage = CGame:NewObjectFromPath("/Script/UMG.Image", ParentCanvas)
-    if not IsValid(HealthImage) then return nil end
-    HealthImage:SetColorAndOpacity(FLinearColor(BoxESP.HealthColor.R, BoxESP.HealthColor.G, BoxESP.HealthColor.B, BoxESP.HealthColor.A))
-    HealthImage:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-
-    local HealthSlot = ParentCanvas:AddChildToCanvas(HealthImage)
-    if not HealthSlot then return nil end
-    HealthSlot:SetAutoSize(false)
-    HealthSlot:SetZOrder(999)
-    HealthSlot:SetAlignment(FVector2D(0.5, 1.0))
+    -- Box, health bar, and snap-line rendering are intentionally disabled.
+    -- Text/flag widgets are kept because they are the requested information.
+    local CornerContainer, CornerMainSlot, CornerLines = nil, nil, nil
+    local BgImage, BgSlot = nil, nil
+    local HealthImage, HealthSlot = nil, nil
 
     local function CreateStyledTextBlock(defaultColor, fontSize, alignment)
         local txt = CGame:NewObjectFromPath("/Script/UMG.TextBlock", ParentCanvas)
@@ -879,7 +823,7 @@ function BoxESP.UpdateESP()
                         if boxData then BoxESP.BoxWidgets[KeyStr] = boxData end
                     end
 
-                    if boxData and IsValid(boxData.CornerContainer) then
+                    if boxData then
                         if bTopOk and bBottomOk then
                             local boxHeight = math.max(28, math.abs(bottomY - topY))
                             local boxWidth = math.max(15, boxHeight * (isProne and 1.1 or (isCrouch and 0.7 or 0.55)))
@@ -889,23 +833,8 @@ function BoxESP.UpdateESP()
                             local boxTopY = centerY - (boxHeight * 0.5)
                             local boxBottomY = centerY + (boxHeight * 0.5)
 
-                            BoxESP.UpdateCornerDimensions(boxData, boxWidth, boxHeight)
-                            boxData.CornerSlot:SetPosition(FVector2D(centerX, centerY))
+                            -- No box/corner rendering. Keep the projected dimensions only for text placement.
                             BoxESP.ShowWidget(boxData)
-
-                            local healthBarWidth = BoxESP.HealthBarWidth or 2.0
-                            local healthCenterX = centerX - (boxWidth * 0.5) - 2.5 - (healthBarWidth * 0.5)
-                            local health = Pawn.Health or (Pawn.GetHealth and Pawn:GetHealth()) or 100
-                            local healthMax = Pawn.HealthMax or (Pawn.GetHealthMax and Pawn:GetHealthMax()) or 100
-                            if healthMax <= 0 then healthMax = 100 end
-
-                            local healthPercent = math.max(0, math.min(1, health / healthMax))
-                            local currentHealthHeight = boxHeight * healthPercent
-
-                            boxData.BgSlot:SetSize(FVector2D(healthBarWidth, boxHeight))
-                            boxData.BgSlot:SetPosition(FVector2D(healthCenterX, boxBottomY))
-                            boxData.HealthSlot:SetSize(FVector2D(healthBarWidth, currentHealthHeight))
-                            boxData.HealthSlot:SetPosition(FVector2D(healthCenterX, boxBottomY))
 
                             if bRunHeavyTasks or boxData._cachedWeapon == "" then
                                 local wep = (Pawn.GetCurrentWeapon and Pawn:GetCurrentWeapon())
