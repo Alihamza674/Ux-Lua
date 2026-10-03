@@ -2672,6 +2672,730 @@ end
 -- ========================================== 
 -- INIT MOD MENU (extended with all features)
 -- ========================================== 
+-- ============================================================
+-- INTEGRATED CIRCLE & ARROW ESP
+-- Added without replacing the existing systems.
+-- ============================================================
+-- CIRCLE & ARROW ESP FUNCTION
+-- ============================================================
+local function InitCircleArrowESP()
+    if _G.CircleArrowESP then return end
+    local CAIsValid = function(obj) return obj ~= nil and slua ~= nil and slua.isValid ~= nil and slua.isValid(obj) end
+    local CAFVector2D = _G.FVector2D or import("Vector2D")
+    local CAFLinearColor = _G.FLinearColor or import("LinearColor")
+    local CASlateBlueprintLibrary = nil
+    local CAWidgetLayoutLibrary = nil
+    pcall(function() CASlateBlueprintLibrary = import("SlateBlueprintLibrary") end)
+    pcall(function() CAWidgetLayoutLibrary = import("WidgetLayoutLibrary") end)
+
+    local ESP = {}
+    ESP.ArrowWidgets = {}
+    ESP.FOVCircleLines = {}
+    ESP.ESPCanvas = nil
+    ESP.bActive = false
+    ESP._cachedViewportW = 1920
+    ESP._cachedViewportH = 1080
+    ESP._CanvasScaleX = 1.0
+    ESP._CanvasScaleY = 1.0
+    ESP._CanvasOffsetX = 0.0
+    ESP._CanvasOffsetY = 0.0
+    ESP._EnemyCache = {}
+    ESP.FOVCircleRadius = 250.0
+    ESP.FOVCircleSegments = 72
+    ESP.FOVCircleThickness = 4.0
+    ESP.FOVCircleColor = CAFLinearColor and CAFLinearColor(1.0, 0.85, 0.0, 0.7) or {R=1,G=0.85,B=0,A=0.7}
+    -- Extra glow circle for premium feel (red glow)
+    ESP.FOVCircleGlowColor = CAFLinearColor and CAFLinearColor(1.0, 0.2, 0.0, 0.2) or {R=1,G=0.2,B=0,A=0.2}
+    ESP.FOVCircleGlowRadius = 260.0
+    ESP.FOVCircleGlowSegments = 72
+    ESP.FOVCircleGlowThickness = 8.0
+    -- Inner ring for depth
+    ESP.FOVCircleInnerColor = CAFLinearColor and CAFLinearColor(0.8, 0.15, 0.0, 0.5) or {R=0.8,G=0.15,B=0,A=0.5}
+    ESP.FOVCircleInnerRadius = 240.0
+    ESP.FOVCircleInnerSegments = 72
+    ESP.FOVCircleInnerThickness = 2.0
+    -- Layer 4: Outer yellow accent ring (bright, sharp)
+    ESP.FOVCircleOuterColor = CAFLinearColor and CAFLinearColor(1.0, 0.85, 0.0, 0.9) or {R=1,G=0.85,B=0,A=0.9}
+    ESP.FOVCircleOuterRadius = 275.0
+    ESP.FOVCircleOuterSegments = 72
+    ESP.FOVCircleOuterThickness = 3.0
+    ESP.ArrowLength = 40.0
+    ESP.ArrowThickness = 40.0
+    ESP.ArrowColor = CAFLinearColor and CAFLinearColor(1.0, 1.0, 0.9, 0.95) or {R=1,G=1,B=0.9,A=0.95}
+    ESP.nUpdateInterval = 0.5
+    ESP._LightUpdateInterval = 0.05
+
+    function ESP.GetGameplayData()
+        if ESP._CachedGameplayData then return ESP._CachedGameplayData end
+        local ok, GDP = pcall(function() return require("GameLua.GameCore.Data.GameplayData") end)
+        if ok and GDP then ESP._CachedGameplayData = GDP; return GDP end
+        return nil
+    end
+
+    function ESP.GetMyPlayerController()
+        local PC = ESP._CachedPC
+        if PC and CAIsValid(PC) then return PC end
+        local GDP = ESP.GetGameplayData()
+        if GDP then pcall(function() PC = GDP.GetPlayerController and GDP.GetPlayerController() end) end
+        if not (PC and CAIsValid(PC)) then pcall(function() if slua_GameFrontendHUD then PC = slua_GameFrontendHUD:GetPlayerController() end end) end
+        if PC and CAIsValid(PC) then ESP._CachedPC = PC end
+        return PC
+    end
+
+    function ESP.GetCGameState()
+        if ESP._CachedCGameState and CAIsValid(ESP._CachedCGameState) then return ESP._CachedCGameState end
+        local ok, GS = pcall(function() return require("GameLua.GameCore.Data.CGameState") end)
+        if ok and GS then ESP._CachedCGameState = GS; return GS end
+        return nil
+    end
+
+    function ESP.GetAllCharacters()
+        local AllChars = {}
+        pcall(function()
+            local Pawns = Game:GetAllPlayerPawns()
+            if Pawns then
+                for _, Pawn in pairs(Pawns) do
+                    if Pawn and slua.isValid(Pawn) then
+                        local pKey = nil
+                        if Pawn.GetPlayerKey then pKey = Pawn:GetPlayerKey() end
+                        if not pKey and Pawn.PlayerKey then pKey = Pawn.PlayerKey end
+                        if not pKey and Pawn.PlayerState and Pawn.PlayerState.PlayerKey then pKey = Pawn.PlayerState.PlayerKey end
+                        if pKey then AllChars[pKey] = Pawn end
+                    end
+                end
+            end
+        end)
+        if not next(AllChars) then
+            local GS = ESP.GetCGameState()
+            if GS and GS.GetAllCharacters then pcall(function() AllChars = GS:GetAllCharacters() end) end
+        end
+        return AllChars
+    end
+
+    function ESP.GetMyPlayerKey()
+        local PC = ESP.GetMyPlayerController()
+        if not CAIsValid(PC) then return nil end
+        local MyKey = nil
+        pcall(function()
+            if PC.GetPlayerKey then MyKey = PC:GetPlayerKey()
+            elseif PC.PlayerState and PC.PlayerState.PlayerKey then MyKey = PC.PlayerState.PlayerKey end
+        end)
+        return MyKey
+    end
+
+    function ESP.IsMe(Character, PlayerKey, MyKey)
+        local bIsMe = false
+        pcall(function()
+            local GDP = ESP.GetGameplayData()
+            if GDP and GDP.GetLocalCharacter then
+                local MyChar = GDP.GetLocalCharacter()
+                if MyChar and Character == MyChar then bIsMe = true; return end
+            end
+            local PC = ESP.GetMyPlayerController()
+            if PC and PC.GetPawn then
+                local Pawn = PC:GetPawn()
+                if Pawn and Character == Pawn then bIsMe = true; return end
+            end
+        end)
+        if not bIsMe and MyKey ~= nil and PlayerKey ~= nil then bIsMe = (tostring(PlayerKey) == tostring(MyKey)) end
+        return bIsMe
+    end
+
+    function ESP.IsAlive(Character)
+        local bAlive = true
+        pcall(function()
+            if Character.HealthStatus then bAlive = SecurityCommonUtils.IsHealthStatusAlive(Character.HealthStatus)
+            elseif Character.IsAlive then bAlive = Character:IsAlive()
+            elseif Character.Health ~= nil then bAlive = Character.Health > 0
+            elseif Character.HP ~= nil then bAlive = Character.HP > 0 end
+        end)
+        return bAlive
+    end
+
+    function ESP.GetTeamID(Character)
+        if not CAIsValid(Character) then return nil end
+        local TeamID = nil
+        pcall(function() if Character.GetTeamID then TeamID = Character:GetTeamID() end end)
+        if not TeamID then
+            pcall(function()
+                local PS = nil
+                if Character.GetPlayerStateSafety then PS = Character:GetPlayerStateSafety()
+                elseif Character.GetPlayerState then PS = Character:GetPlayerState() end
+                if CAIsValid(PS) then
+                    if PS.GetTeamID then TeamID = PS:GetTeamID()
+                    elseif PS.TeamID then TeamID = PS.TeamID end
+                end
+            end)
+        end
+        if not TeamID then pcall(function() if Character.TeamID then TeamID = Character.TeamID end end) end
+        return TeamID
+    end
+
+    function ESP.GetCharacterLocation(Character)
+        if not CAIsValid(Character) then return nil end
+        local Loc = nil
+        pcall(function() if Character.K2_GetActorLocation then Loc = Character:K2_GetActorLocation() end end)
+        if not Loc then pcall(function() if Game and Game.GetActorLocation then Loc = Game:GetActorLocation(Character) end end) end
+        return Loc
+    end
+
+    function ESP.InitESPCanvas()
+        if ESP.ESPCanvas and Game:IsValid(ESP.ESPCanvas) then return true end
+        local InGameUITools = nil
+        pcall(function() InGameUITools = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools") end)
+        if not InGameUITools then return false end
+        local MainControlBaseUI = nil
+        pcall(function() MainControlBaseUI = InGameUITools.GetMainControlBaseUI() end)
+        if not MainControlBaseUI or not Game:IsValid(MainControlBaseUI) then return false end
+        local ParentCanvas = nil
+        pcall(function()
+            if MainControlBaseUI.CanvasPanel_0 and Game:IsValid(MainControlBaseUI.CanvasPanel_0) then ParentCanvas = MainControlBaseUI.CanvasPanel_0
+            elseif MainControlBaseUI.CanvasPanel_42 and Game:IsValid(MainControlBaseUI.CanvasPanel_42) then ParentCanvas = MainControlBaseUI.CanvasPanel_42 end
+        end)
+        if not ParentCanvas then return false end
+        ESP.ESPCanvas = ParentCanvas
+        return true
+    end
+
+    function ESP.UpdateCanvasTransform(PC)
+        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then return end
+        local success = false
+        pcall(function()
+            local SBL = CASlateBlueprintLibrary
+            if SBL and SBL.AbsoluteToLocal then
+                local cg = ESP.ESPCanvas:GetCachedGeometry()
+                if cg then
+                    local pt0 = SBL.AbsoluteToLocal(cg, CAFVector2D and CAFVector2D(0,0) or {X=0,Y=0})
+                    local pt1 = SBL.AbsoluteToLocal(cg, CAFVector2D and CAFVector2D(100,100) or {X=100,Y=100})
+                    if pt0 and pt1 then
+                        ESP._CanvasScaleX = (pt1.X - pt0.X) / 100
+                        ESP._CanvasScaleY = (pt1.Y - pt0.Y) / 100
+                        ESP._CanvasOffsetX = pt0.X
+                        ESP._CanvasOffsetY = pt0.Y
+                        success = true
+                    end
+                end
+            end
+        end)
+        if not success then
+            local scale = 1.0
+            local WLL = CAWidgetLayoutLibrary
+            if WLL and WLL.GetViewportScale then scale = WLL.GetViewportScale(PC) or 1.0 end
+            ESP._CanvasScaleX = 1.0 / scale
+            ESP._CanvasScaleY = 1.0 / scale
+            ESP._CanvasOffsetX = 0
+            ESP._CanvasOffsetY = 0
+        end
+    end
+
+    function ESP.ScreenPixelToCanvasLocal(PC, ScreenPixelPos)
+        if not ScreenPixelPos then return CAFVector2D and CAFVector2D(0,0) or {X=0,Y=0} end
+        local scaleX = ESP._CanvasScaleX or 1.0
+        local scaleY = ESP._CanvasScaleY or 1.0
+        local offsetX = ESP._CanvasOffsetX or 0
+        local offsetY = ESP._CanvasOffsetY or 0
+        return (CAFVector2D and CAFVector2D(ScreenPixelPos.X * scaleX + offsetX, ScreenPixelPos.Y * scaleY + offsetY)) or {X = ScreenPixelPos.X * scaleX + offsetX, Y = ScreenPixelPos.Y * scaleY + offsetY}
+    end
+
+    function ESP.GetScreenCenter(PC)
+        local screenPixelW, screenPixelH = 0, 0
+        local scale = 1.0
+        pcall(function()
+            if PC and PC.GetViewportSize then
+                local vs = CAFVector2D and CAFVector2D(0,0) or {X=0,Y=0}
+                PC:GetViewportSize(vs)
+                if vs and vs.X and vs.X > 200 then screenPixelW, screenPixelH = vs.X, vs.Y end
+            end
+        end)
+        if screenPixelW <= 200 then
+            pcall(function()
+                local WLL = CAWidgetLayoutLibrary
+                if WLL and WLL.GetViewportSize then
+                    local vs = WLL.GetViewportSize(PC)
+                    if vs and vs.X and vs.X > 200 then screenPixelW, screenPixelH = vs.X, vs.Y end
+                end
+            end)
+        end
+        if screenPixelW <= 200 then
+            screenPixelW = (ESP._cachedViewportW or 1920) * scale
+            screenPixelH = (ESP._cachedViewportH or 1080) * scale
+        end
+        local centerPixel = CAFVector2D and CAFVector2D(screenPixelW / 2.0, screenPixelH / 2.0) or {X = screenPixelW / 2.0, Y = screenPixelH / 2.0}
+        return ESP.ScreenPixelToCanvasLocal(PC, centerPixel)
+    end
+
+    function ESP.GetArrowAngleRad(PC, WorldLoc, CenterCanvas)
+        local angle_rad = 0
+        local ScreenPos = CAFVector2D and CAFVector2D(0,0) or {X=0,Y=0}
+        local bProjectOK = false
+        pcall(function()
+            local res = PC:ProjectWorldLocationToScreen(WorldLoc, ScreenPos, true)
+            bProjectOK = (res == true or res == 1)
+        end)
+        if bProjectOK then
+            local canvasPos = ESP.ScreenPixelToCanvasLocal(PC, ScreenPos)
+            local dx = canvasPos.X - CenterCanvas.X
+            local dy = canvasPos.Y - CenterCanvas.Y
+            if math.abs(dx) > 0.1 or math.abs(dy) > 0.1 then
+                angle_rad = math.atan2 and math.atan2(dy, dx) or math.atan(dy, dx)
+            end
+        else
+            pcall(function()
+                local CamMgr = PC:GetPlayerCameraManager()
+                if not CAIsValid(CamMgr) then return end
+                local CamLoc = CamMgr:GetCameraLocation()
+                local CamRot = CamMgr:GetCameraRotation()
+                local dx3 = WorldLoc.X - CamLoc.X
+                local dy3 = WorldLoc.Y - CamLoc.Y
+                local enemyYaw = math.atan2 and math.atan2(dy3, dx3) or math.atan(dy3, dx3)
+                local camYaw = math.rad(CamRot.Yaw)
+                local delta = enemyYaw - camYaw
+                while delta > math.pi do delta = delta - 2*math.pi end
+                while delta < -math.pi do delta = delta + 2*math.pi end
+                angle_rad = delta + math.pi
+                while angle_rad > math.pi do angle_rad = angle_rad - 2*math.pi end
+                while angle_rad < -math.pi do angle_rad = angle_rad + 2*math.pi end
+            end)
+        end
+        return angle_rad
+    end
+
+    function ESP.UpdateCenterCircle(CenterCanvas)
+        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then ESP.RemoveCenterCircle() return end
+        local cx = CenterCanvas.X
+        local cy = CenterCanvas.Y
+        if not ESP.FOVCircleLines then ESP.FOVCircleLines = {} end
+        if not ESP.FOVCircleGlowLines then ESP.FOVCircleGlowLines = {} end
+        if not ESP.FOVCircleInnerLines then ESP.FOVCircleInnerLines = {} end
+        if not ESP.FOVCircleOuterLines then ESP.FOVCircleOuterLines = {} end
+
+        -- Helper to draw a circle ring
+        local function DrawRing(linesTable, radius, segments, thickness, color, zorder)
+            for i = 1, segments do
+                local angle1 = ((i-1) / segments) * (2 * math.pi)
+                local angle2 = (i / segments) * (2 * math.pi)
+                local x1 = cx + math.cos(angle1) * radius
+                local y1 = cy + math.sin(angle1) * radius
+                local x2 = cx + math.cos(angle2) * radius
+                local y2 = cy + math.sin(angle2) * radius
+                local dx = x2 - x1
+                local dy = y2 - y1
+                local len = math.sqrt(dx*dx + dy*dy)
+                local ang = (math.atan2 and math.atan2(dy,dx) or math.atan(dy,dx)) * (180.0 / math.pi)
+                local lineData = linesTable[i]
+                if not lineData then
+                    local Border = nil
+                    pcall(function() Border = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
+                    if Border and slua.isValid(Border) then
+                        pcall(function() Border:SetBrushColor(color) end)
+                        pcall(function() Border:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+                        pcall(function() Border:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.0, 0.5) or {X=0,Y=0.5}) end)
+                        local Slot = ESP.ESPCanvas:AddChildToCanvas(Border)
+                        if Slot then Slot:SetAutoSize(false); Slot:SetZOrder(zorder) end
+                        lineData = { Widget = Border, Slot = Slot }
+                        linesTable[i] = lineData
+                    end
+                end
+                if lineData and lineData.Slot then
+                    pcall(function()
+                        lineData.Slot:SetPosition(CAFVector2D and CAFVector2D(x1, y1 - thickness/2.0) or {X=x1, Y=y1 - thickness/2.0})
+                        lineData.Slot:SetSize(CAFVector2D and CAFVector2D(len + 0.5, thickness) or {X=len+0.5, Y=thickness})
+                        lineData.Widget:SetRenderAngle(ang)
+                        lineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                    end)
+                end
+            end
+        end
+
+        -- Only 1 main circle (bright yellow, sharp)
+        DrawRing(ESP.FOVCircleLines, ESP.FOVCircleRadius or 300.0, ESP.FOVCircleSegments or 72, ESP.FOVCircleThickness or 4.0, ESP.FOVCircleColor, 1)
+    end
+
+    function ESP.RemoveCenterCircle()
+        if ESP.FOVCircleLines then
+            for _, lineData in pairs(ESP.FOVCircleLines) do
+                if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
+                    pcall(function() lineData.Widget:RemoveFromParent() lineData.Widget:ConditionalBeginDestroy() end)
+                end
+            end
+        end
+        if ESP.FOVCircleGlowLines then
+            for _, lineData in pairs(ESP.FOVCircleGlowLines) do
+                if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
+                    pcall(function() lineData.Widget:RemoveFromParent() lineData.Widget:ConditionalBeginDestroy() end)
+                end
+            end
+        end
+        if ESP.FOVCircleInnerLines then
+            for _, lineData in pairs(ESP.FOVCircleInnerLines) do
+                if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
+                    pcall(function() lineData.Widget:RemoveFromParent() lineData.Widget:ConditionalBeginDestroy() end)
+                end
+            end
+        end
+        if ESP.FOVCircleOuterLines then
+            for _, lineData in pairs(ESP.FOVCircleOuterLines) do
+                if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
+                    pcall(function() lineData.Widget:RemoveFromParent() lineData.Widget:ConditionalBeginDestroy() end)
+                end
+            end
+        end
+        ESP.FOVCircleLines = {}
+        ESP.FOVCircleGlowLines = {}
+        ESP.FOVCircleInnerLines = {}
+        ESP.FOVCircleOuterLines = {}
+    end
+
+    function ESP.CreateArrowWidget()
+        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then return nil end
+
+        -- Layer 1: Outer glow halo (largest, very transparent)
+        local GlowBorder = nil
+        pcall(function() GlowBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
+        if GlowBorder and slua.isValid(GlowBorder) then
+            pcall(function() GlowBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(1.0, 0.5, 0.0, 0.1) or {R=1,G=0.5,B=0,A=0.1}) end)
+            pcall(function() GlowBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+            pcall(function() GlowBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
+        end
+        local GlowSlot = nil
+        pcall(function()
+            GlowSlot = ESP.ESPCanvas:AddChildToCanvas(GlowBorder)
+            if GlowSlot then GlowSlot:SetAutoSize(false); GlowSlot:SetZOrder(0) end
+        end)
+
+        -- Layer 2: Mid glow (orange aura)
+        local MidGlowBorder = nil
+        pcall(function() MidGlowBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
+        if MidGlowBorder and slua.isValid(MidGlowBorder) then
+            pcall(function() MidGlowBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(1.0, 0.65, 0.0, 0.2) or {R=1,G=0.65,B=0,A=0.2}) end)
+            pcall(function() MidGlowBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+            pcall(function() MidGlowBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
+        end
+        local MidGlowSlot = nil
+        pcall(function()
+            MidGlowSlot = ESP.ESPCanvas:AddChildToCanvas(MidGlowBorder)
+            if MidGlowSlot then MidGlowSlot:SetAutoSize(false); MidGlowSlot:SetZOrder(1) end
+        end)
+
+        -- Layer 3: Golden ring (medium, semi-transparent)
+        local RingBorder = nil
+        pcall(function() RingBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
+        if RingBorder and slua.isValid(RingBorder) then
+            pcall(function() RingBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(0.85, 0.45, 0.0, 0.5) or {R=0.85,G=0.45,B=0,A=0.5}) end)
+            pcall(function() RingBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+            pcall(function() RingBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
+        end
+        local RingSlot = nil
+        pcall(function()
+            RingSlot = ESP.ESPCanvas:AddChildToCanvas(RingBorder)
+            if RingSlot then RingSlot:SetAutoSize(false); RingSlot:SetZOrder(2) end
+        end)
+
+        -- Layer 4: Main bright diamond (core)
+        local Border = nil
+        pcall(function() Border = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
+        if not Border or not slua.isValid(Border) then return nil end
+        pcall(function() Border:SetBrushColor(ESP.ArrowColor) end)
+        pcall(function() Border:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+        pcall(function() Border:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
+        local Slot = nil
+        pcall(function()
+            Slot = ESP.ESPCanvas:AddChildToCanvas(Border)
+            if Slot then Slot:SetAutoSize(false); Slot:SetZOrder(4) end
+        end)
+
+        -- Layer 5: Inner gold core (medium)
+        local InnerGoldBorder = nil
+        pcall(function() InnerGoldBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
+        if InnerGoldBorder and slua.isValid(InnerGoldBorder) then
+            pcall(function() InnerGoldBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(1.0, 0.9, 0.3, 0.9) or {R=1,G=0.9,B=0.3,A=0.9}) end)
+            pcall(function() InnerGoldBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+            pcall(function() InnerGoldBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
+        end
+        local InnerGoldSlot = nil
+        pcall(function()
+            InnerGoldSlot = ESP.ESPCanvas:AddChildToCanvas(InnerGoldBorder)
+            if InnerGoldSlot then InnerGoldSlot:SetAutoSize(false); InnerGoldSlot:SetZOrder(5) end
+        end)
+
+        -- Layer 6: Bright white-yellow center (tiny, sharp)
+        local CoreBorder = nil
+        pcall(function() CoreBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
+        if CoreBorder and slua.isValid(CoreBorder) then
+            pcall(function() CoreBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(1.0, 1.0, 0.9, 1.0) or {R=1,G=1,B=0.9,A=1}) end)
+            pcall(function() CoreBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+            pcall(function() CoreBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
+        end
+        local CoreSlot = nil
+        pcall(function()
+            CoreSlot = ESP.ESPCanvas:AddChildToCanvas(CoreBorder)
+            if CoreSlot then CoreSlot:SetAutoSize(false); CoreSlot:SetZOrder(6) end
+        end)
+
+        return { Widget = Border, Slot = Slot, GlowWidget = GlowBorder, GlowSlot = GlowSlot, RingWidget = RingBorder, RingSlot = RingSlot, CoreWidget = CoreBorder, CoreSlot = CoreSlot, MidGlowWidget = MidGlowBorder, MidGlowSlot = MidGlowSlot, InnerGoldWidget = InnerGoldBorder, InnerGoldSlot = InnerGoldSlot }
+    end
+
+    function ESP.UpdateDirectionalArrow(KeyStr, WorldLoc, PC, CenterCanvas)
+        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then return end
+        if not WorldLoc then
+            local ld = ESP.ArrowWidgets[KeyStr]
+            if ld and ld.Widget and slua.isValid(ld.Widget) then
+                pcall(function() ld.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
+            end
+            return
+        end
+        local angle_rad = ESP.GetArrowAngleRad(PC, WorldLoc, CenterCanvas)
+        local angle_deg = angle_rad * (180.0 / math.pi)
+        local radius = ESP.FOVCircleRadius or 150.0
+        local markSize = ESP.ArrowLength or 30.0
+        local startX = CenterCanvas.X + math.cos(angle_rad) * radius
+        local startY = CenterCanvas.Y + math.sin(angle_rad) * radius
+        local LineData = ESP.ArrowWidgets[KeyStr]
+        if not LineData then
+            LineData = ESP.CreateArrowWidget()
+            if not LineData or not LineData.Widget or not LineData.Slot then return end
+            ESP.ArrowWidgets[KeyStr] = LineData
+        end
+        pcall(function()
+            local halfSize = markSize / 2.0
+            local ringSize = markSize * 1.3
+            local halfRing = ringSize / 2.0
+            local glowSize = markSize * 2.0
+            local halfGlow = glowSize / 2.0
+            local midGlowSize = markSize * 1.5
+            local halfMidGlow = midGlowSize / 2.0
+            local innerGoldSize = markSize * 0.55
+            local halfInnerGold = innerGoldSize / 2.0
+            local coreSize = markSize * 0.25
+            local halfCore = coreSize / 2.0
+            local diamondRot = angle_deg + 45.0
+
+            -- Layer 4: Main diamond
+            LineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+            LineData.Slot:SetPosition(CAFVector2D and CAFVector2D(startX - halfSize, startY - halfSize) or {X=startX - halfSize, Y=startY - halfSize})
+            LineData.Slot:SetSize(CAFVector2D and CAFVector2D(markSize, markSize) or {X=markSize, Y=markSize})
+            LineData.Widget:SetRenderAngle(diamondRot)
+
+            -- Layer 1: Outer glow halo
+            if LineData.GlowWidget and LineData.GlowSlot then
+                pcall(function()
+                    LineData.GlowWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                    LineData.GlowSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfGlow, startY - halfGlow) or {X=startX - halfGlow, Y=startY - halfGlow})
+                    LineData.GlowSlot:SetSize(CAFVector2D and CAFVector2D(glowSize, glowSize) or {X=glowSize, Y=glowSize})
+                    LineData.GlowWidget:SetRenderAngle(diamondRot)
+                end)
+            end
+
+            -- Layer 2: Mid glow aura
+            if LineData.MidGlowWidget and LineData.MidGlowSlot then
+                pcall(function()
+                    LineData.MidGlowWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                    LineData.MidGlowSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfMidGlow, startY - halfMidGlow) or {X=startX - halfMidGlow, Y=startY - halfMidGlow})
+                    LineData.MidGlowSlot:SetSize(CAFVector2D and CAFVector2D(midGlowSize, midGlowSize) or {X=midGlowSize, Y=midGlowSize})
+                    LineData.MidGlowWidget:SetRenderAngle(diamondRot)
+                end)
+            end
+
+            -- Layer 3: Golden ring
+            if LineData.RingWidget and LineData.RingSlot then
+                pcall(function()
+                    LineData.RingWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                    LineData.RingSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfRing, startY - halfRing) or {X=startX - halfRing, Y=startY - halfRing})
+                    LineData.RingSlot:SetSize(CAFVector2D and CAFVector2D(ringSize, ringSize) or {X=ringSize, Y=ringSize})
+                    LineData.RingWidget:SetRenderAngle(diamondRot)
+                end)
+            end
+
+            -- Layer 5: Inner gold core
+            if LineData.InnerGoldWidget and LineData.InnerGoldSlot then
+                pcall(function()
+                    LineData.InnerGoldWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                    LineData.InnerGoldSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfInnerGold, startY - halfInnerGold) or {X=startX - halfInnerGold, Y=startY - halfInnerGold})
+                    LineData.InnerGoldSlot:SetSize(CAFVector2D and CAFVector2D(innerGoldSize, innerGoldSize) or {X=innerGoldSize, Y=innerGoldSize})
+                    LineData.InnerGoldWidget:SetRenderAngle(diamondRot)
+                end)
+            end
+
+            -- Layer 6: Bright white-yellow center
+            if LineData.CoreWidget and LineData.CoreSlot then
+                pcall(function()
+                    LineData.CoreWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                    LineData.CoreSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfCore, startY - halfCore) or {X=startX - halfCore, Y=startY - halfCore})
+                    LineData.CoreSlot:SetSize(CAFVector2D and CAFVector2D(coreSize, coreSize) or {X=coreSize, Y=coreSize})
+                    LineData.CoreWidget:SetRenderAngle(diamondRot)
+                end)
+            end
+        end)
+    end
+
+    function ESP.RemoveArrow(KeyStr)
+        local LineData = ESP.ArrowWidgets[KeyStr]
+        if LineData then
+            if LineData.Widget and slua.isValid(LineData.Widget) then
+                pcall(function() LineData.Widget:RemoveFromParent() LineData.Widget:ConditionalBeginDestroy() end)
+            end
+            if LineData.GlowWidget and slua.isValid(LineData.GlowWidget) then
+                pcall(function() LineData.GlowWidget:RemoveFromParent() LineData.GlowWidget:ConditionalBeginDestroy() end)
+            end
+            if LineData.MidGlowWidget and slua.isValid(LineData.MidGlowWidget) then
+                pcall(function() LineData.MidGlowWidget:RemoveFromParent() LineData.MidGlowWidget:ConditionalBeginDestroy() end)
+            end
+            if LineData.RingWidget and slua.isValid(LineData.RingWidget) then
+                pcall(function() LineData.RingWidget:RemoveFromParent() LineData.RingWidget:ConditionalBeginDestroy() end)
+            end
+            if LineData.InnerGoldWidget and slua.isValid(LineData.InnerGoldWidget) then
+                pcall(function() LineData.InnerGoldWidget:RemoveFromParent() LineData.InnerGoldWidget:ConditionalBeginDestroy() end)
+            end
+            if LineData.CoreWidget and slua.isValid(LineData.CoreWidget) then
+                pcall(function() LineData.CoreWidget:RemoveFromParent() LineData.CoreWidget:ConditionalBeginDestroy() end)
+            end
+        end
+        ESP.ArrowWidgets[KeyStr] = nil
+    end
+
+    function ESP.ClearAllArrows()
+        for KeyStr, LineData in pairs(ESP.ArrowWidgets) do
+            if LineData then
+                if LineData.Widget and slua.isValid(LineData.Widget) then
+                    pcall(function() LineData.Widget:RemoveFromParent() LineData.Widget:ConditionalBeginDestroy() end)
+                end
+                if LineData.GlowWidget and slua.isValid(LineData.GlowWidget) then
+                    pcall(function() LineData.GlowWidget:RemoveFromParent() LineData.GlowWidget:ConditionalBeginDestroy() end)
+                end
+                if LineData.MidGlowWidget and slua.isValid(LineData.MidGlowWidget) then
+                    pcall(function() LineData.MidGlowWidget:RemoveFromParent() LineData.MidGlowWidget:ConditionalBeginDestroy() end)
+                end
+                if LineData.RingWidget and slua.isValid(LineData.RingWidget) then
+                    pcall(function() LineData.RingWidget:RemoveFromParent() LineData.RingWidget:ConditionalBeginDestroy() end)
+                end
+                if LineData.InnerGoldWidget and slua.isValid(LineData.InnerGoldWidget) then
+                    pcall(function() LineData.InnerGoldWidget:RemoveFromParent() LineData.InnerGoldWidget:ConditionalBeginDestroy() end)
+                end
+                if LineData.CoreWidget and slua.isValid(LineData.CoreWidget) then
+                    pcall(function() LineData.CoreWidget:RemoveFromParent() LineData.CoreWidget:ConditionalBeginDestroy() end)
+                end
+            end
+        end
+        ESP.ArrowWidgets = {}
+    end
+
+    function ESP.ScanAndUpdate()
+        if not ESP.InitESPCanvas() then return end
+        local PC = ESP.GetMyPlayerController()
+        if not CAIsValid(PC) then return end
+        ESP.UpdateCanvasTransform(PC)
+        local centerCanvas = ESP.GetScreenCenter(PC)
+        ESP.UpdateCenterCircle(centerCanvas)
+        local AllChars = ESP.GetAllCharacters()
+        if not AllChars then return end
+        local MyKey = ESP.GetMyPlayerKey()
+        local MyChar = nil
+        pcall(function()
+            local GDP = ESP.GetGameplayData()
+            if GDP and GDP.GetLocalCharacter then MyChar = GDP.GetLocalCharacter()
+            elseif PC and PC.GetPawn then MyChar = PC:GetPawn() end
+        end)
+        local MyTeamID = ESP.GetTeamID(MyChar)
+        local SeenKeys = {}
+        for PlayerKey, Character in pairs(AllChars) do
+            if CAIsValid(Character) then
+                local bIsMe = ESP.IsMe(Character, PlayerKey, MyKey)
+                local KeyStr = tostring(PlayerKey)
+                local bAlive = ESP.IsAlive(Character)
+                local TeamID = ESP.GetTeamID(Character)
+                local bSkip = bIsMe
+                if MyTeamID ~= nil and TeamID == MyTeamID and not bIsMe then bSkip = true end
+                if not bAlive then bSkip = true end
+                if not bSkip then
+                    SeenKeys[KeyStr] = true
+                    ESP._EnemyCache[KeyStr] = Character
+                    local Loc = ESP.GetCharacterLocation(Character)
+                    ESP.UpdateDirectionalArrow(KeyStr, Loc, PC, centerCanvas)
+                end
+            end
+        end
+        for KeyStr in pairs(ESP.ArrowWidgets) do
+            if not SeenKeys[KeyStr] then ESP.RemoveArrow(KeyStr); ESP._EnemyCache[KeyStr] = nil end
+        end
+    end
+
+    function ESP.UpdateLight()
+        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then return end
+        local PC = ESP.GetMyPlayerController()
+        if not CAIsValid(PC) then return end
+        ESP.UpdateCanvasTransform(PC)
+        local centerCanvas = ESP.GetScreenCenter(PC)
+        for KeyStr, Character in pairs(ESP._EnemyCache) do
+            if CAIsValid(Character) and ESP.IsAlive(Character) then
+                local Loc = ESP.GetCharacterLocation(Character)
+                ESP.UpdateDirectionalArrow(KeyStr, Loc, PC, centerCanvas)
+            else
+                ESP.RemoveArrow(KeyStr)
+                ESP._EnemyCache[KeyStr] = nil
+            end
+        end
+    end
+
+    function ESP.AttachTimers()
+        pcall(function()
+            local pc = ESP.GetMyPlayerController()
+            if not slua.isValid(pc) or not pc.AddGameTimer then return end
+            local now = os.time()
+            local lastPC = ESP._ActiveTimerPC
+            if lastPC and slua.isValid(lastPC) and lastPC == pc then
+                if ESP._ActiveTimerTick and (now - ESP._ActiveTimerTick) < 5 then return end
+            end
+            ESP._ActiveTimerPC = pc
+            ESP._ActiveTimerTick = now
+            pcall(function()
+                pc:AddGameTimer(ESP.nUpdateInterval or 0.5, true, function()
+                    ESP._ActiveTimerTick = os.time()
+                    if ESP.bActive then pcall(function() ESP.ScanAndUpdate() end) end
+                end)
+            end)
+            pcall(function()
+                pc:AddGameTimer(ESP._LightUpdateInterval or 0.05, true, function()
+                    ESP._ActiveTimerTick = os.time()
+                    if ESP.bActive then pcall(function() ESP.UpdateLight() end) end
+                end)
+            end)
+        end)
+    end
+
+    function ESP.Start()
+        if ESP.bActive then return end
+        ESP.bActive = true
+        ESP.ScanAndUpdate()
+        ESP.AttachTimers()
+    end
+
+    function ESP.Stop()
+        ESP.bActive = false
+        ESP.ClearAllArrows()
+        ESP.RemoveCenterCircle()
+        ESP._EnemyCache = {}
+        ESP.ESPCanvas = nil
+    end
+
+    _G.CircleArrowESP = ESP
+
+
+_G.Mod_CircleArrow_Enabled = _G.Mod_CircleArrow_Enabled or false
+
+_G.SetCircleArrowESPEnabled = function(enabled)
+    _G.Mod_CircleArrow_Enabled = enabled and true or false
+    pcall(function()
+        if not _G.CircleArrowESP then
+            InitCircleArrowESP()
+        end
+        if _G.Mod_CircleArrow_Enabled then
+            _G.CircleArrowESP.Start()
+        else
+            _G.CircleArrowESP.Stop()
+        end
+    end)
+end
+
 function _G.InitModMenuTab()
     if _G.ModMenuInitialized then return end
     _G.ModMenuInitialized = true
@@ -2736,6 +3460,7 @@ function _G.InitModMenuTab()
     { Key = "ModMenu_ESP9_Weapon", UI = AliasMap.Switcher, Text = "   WEAPON ICON", ExpandHandle = "ModMenu_ESP9_Ex", GetFunc = function() return _G.LexusConfig.Esp9_Weapon end, SetFunc = function(c,v) _G.LexusConfig.Esp9_Weapon = v return true end },
     { Key = "ModMenu_ESP9_Line", UI = AliasMap.Switcher, Text = "   ESP LINE", ExpandHandle = "ModMenu_ESP9_Ex", GetFunc = function() return _G.LexusConfig.Esp9_Line end, SetFunc = function(c,v) _G.LexusConfig.Esp9_Line = v return true end },
     { Key = "ModMenu_ESP9_Skeleton", UI = AliasMap.Switcher, Text = "   ESP SKELETON (may cause lag)", ExpandHandle = "ModMenu_ESP9_Ex", GetFunc = function() return _G.LexusConfig.Esp9_Skeleton end, SetFunc = function(c,v) _G.LexusConfig.Esp9_Skeleton = v return true end },
+    { Key = "ModMenu_CircleArrowESP", UI = AliasMap.Switcher, Text = "   CIRCLE & ARROW ESP", GetFunc = function() return _G.LexusConfig.CircleArrowESP or false end, SetFunc = function(c,v) _G.LexusConfig.CircleArrowESP = v; _G.SetCircleArrowESPEnabled(v); return true end },
 }
 
         -- Aimbot Stack (Separate Toggles for Each Mode)
@@ -6336,6 +7061,22 @@ local function MainLoop()
         end
     end
 
+    -- Circle & Arrow ESP synchronization
+    if _G.LexusConfig.CircleArrowESP then
+        pcall(function()
+            if not _G.CircleArrowESP then InitCircleArrowESP() end
+            if _G.CircleArrowESP and not _G.CircleArrowESP.bActive then
+                _G.CircleArrowESP.Start()
+            end
+        end)
+    else
+        pcall(function()
+            if _G.CircleArrowESP and _G.CircleArrowESP.bActive then
+                _G.CircleArrowESP.Stop()
+            end
+        end)
+    end
+
     -- Graphics unlock
     -- Graphics unlock: run only once, not every tick
     if _G.LexusConfig.UnlockFPS and not _G.LexusState.GraphicsUnlocked then
@@ -7491,776 +8232,6 @@ pcall(function()
     end
 end)
 -- ==========================================
-
--- ============================================================
--- INTEGRATED CIRCLE & ARROW ESP
--- ============================================================
--- Complete CircleArrowESP.lua embedded into this file.
-
--- CIRCLE & ARROW ESP FUNCTION
--- ============================================================
-local function InitCircleArrowESP()
-    if _G.CircleArrowESP then return end
-    local CAIsValid = function(obj) return obj ~= nil and slua ~= nil and slua.isValid ~= nil and slua.isValid(obj) end
-    local CAFVector2D = _G.FVector2D or import("Vector2D")
-    local CAFLinearColor = _G.FLinearColor or import("LinearColor")
-    local CASlateBlueprintLibrary = nil
-    local CAWidgetLayoutLibrary = nil
-    pcall(function() CASlateBlueprintLibrary = import("SlateBlueprintLibrary") end)
-    pcall(function() CAWidgetLayoutLibrary = import("WidgetLayoutLibrary") end)
-
-    local ESP = {}
-    ESP.ArrowWidgets = {}
-    ESP.FOVCircleLines = {}
-    ESP.ESPCanvas = nil
-    ESP.bActive = false
-    ESP._cachedViewportW = 1920
-    ESP._cachedViewportH = 1080
-    ESP._CanvasScaleX = 1.0
-    ESP._CanvasScaleY = 1.0
-    ESP._CanvasOffsetX = 0.0
-    ESP._CanvasOffsetY = 0.0
-    ESP._EnemyCache = {}
-    ESP.FOVCircleRadius = 250.0
-    ESP.FOVCircleSegments = 72
-    ESP.FOVCircleThickness = 4.0
-    ESP.FOVCircleColor = CAFLinearColor and CAFLinearColor(1.0, 0.85, 0.0, 0.7) or {R=1,G=0.85,B=0,A=0.7}
-    -- Extra glow circle for premium feel (red glow)
-    ESP.FOVCircleGlowColor = CAFLinearColor and CAFLinearColor(1.0, 0.2, 0.0, 0.2) or {R=1,G=0.2,B=0,A=0.2}
-    ESP.FOVCircleGlowRadius = 260.0
-    ESP.FOVCircleGlowSegments = 72
-    ESP.FOVCircleGlowThickness = 8.0
-    -- Inner ring for depth
-    ESP.FOVCircleInnerColor = CAFLinearColor and CAFLinearColor(0.8, 0.15, 0.0, 0.5) or {R=0.8,G=0.15,B=0,A=0.5}
-    ESP.FOVCircleInnerRadius = 240.0
-    ESP.FOVCircleInnerSegments = 72
-    ESP.FOVCircleInnerThickness = 2.0
-    -- Layer 4: Outer yellow accent ring (bright, sharp)
-    ESP.FOVCircleOuterColor = CAFLinearColor and CAFLinearColor(1.0, 0.85, 0.0, 0.9) or {R=1,G=0.85,B=0,A=0.9}
-    ESP.FOVCircleOuterRadius = 275.0
-    ESP.FOVCircleOuterSegments = 72
-    ESP.FOVCircleOuterThickness = 3.0
-    ESP.ArrowLength = 40.0
-    ESP.ArrowThickness = 40.0
-    ESP.ArrowColor = CAFLinearColor and CAFLinearColor(1.0, 1.0, 0.9, 0.95) or {R=1,G=1,B=0.9,A=0.95}
-    ESP.nUpdateInterval = 0.5
-    ESP._LightUpdateInterval = 0.05
-
-    function ESP.GetGameplayData()
-        if ESP._CachedGameplayData then return ESP._CachedGameplayData end
-        local ok, GDP = pcall(function() return require("GameLua.GameCore.Data.GameplayData") end)
-        if ok and GDP then ESP._CachedGameplayData = GDP; return GDP end
-        return nil
-    end
-
-    function ESP.GetMyPlayerController()
-        local PC = ESP._CachedPC
-        if PC and CAIsValid(PC) then return PC end
-        local GDP = ESP.GetGameplayData()
-        if GDP then pcall(function() PC = GDP.GetPlayerController and GDP.GetPlayerController() end) end
-        if not (PC and CAIsValid(PC)) then pcall(function() if slua_GameFrontendHUD then PC = slua_GameFrontendHUD:GetPlayerController() end end) end
-        if PC and CAIsValid(PC) then ESP._CachedPC = PC end
-        return PC
-    end
-
-    function ESP.GetCGameState()
-        if ESP._CachedCGameState and CAIsValid(ESP._CachedCGameState) then return ESP._CachedCGameState end
-        local ok, GS = pcall(function() return require("GameLua.GameCore.Data.CGameState") end)
-        if ok and GS then ESP._CachedCGameState = GS; return GS end
-        return nil
-    end
-
-    function ESP.GetAllCharacters()
-        local AllChars = {}
-        pcall(function()
-            local Pawns = Game:GetAllPlayerPawns()
-            if Pawns then
-                for _, Pawn in pairs(Pawns) do
-                    if Pawn and slua.isValid(Pawn) then
-                        local pKey = nil
-                        if Pawn.GetPlayerKey then pKey = Pawn:GetPlayerKey() end
-                        if not pKey and Pawn.PlayerKey then pKey = Pawn.PlayerKey end
-                        if not pKey and Pawn.PlayerState and Pawn.PlayerState.PlayerKey then pKey = Pawn.PlayerState.PlayerKey end
-                        if pKey then AllChars[pKey] = Pawn end
-                    end
-                end
-            end
-        end)
-        if not next(AllChars) then
-            local GS = ESP.GetCGameState()
-            if GS and GS.GetAllCharacters then pcall(function() AllChars = GS:GetAllCharacters() end) end
-        end
-        return AllChars
-    end
-
-    function ESP.GetMyPlayerKey()
-        local PC = ESP.GetMyPlayerController()
-        if not CAIsValid(PC) then return nil end
-        local MyKey = nil
-        pcall(function()
-            if PC.GetPlayerKey then MyKey = PC:GetPlayerKey()
-            elseif PC.PlayerState and PC.PlayerState.PlayerKey then MyKey = PC.PlayerState.PlayerKey end
-        end)
-        return MyKey
-    end
-
-    function ESP.IsMe(Character, PlayerKey, MyKey)
-        local bIsMe = false
-        pcall(function()
-            local GDP = ESP.GetGameplayData()
-            if GDP and GDP.GetLocalCharacter then
-                local MyChar = GDP.GetLocalCharacter()
-                if MyChar and Character == MyChar then bIsMe = true; return end
-            end
-            local PC = ESP.GetMyPlayerController()
-            if PC and PC.GetPawn then
-                local Pawn = PC:GetPawn()
-                if Pawn and Character == Pawn then bIsMe = true; return end
-            end
-        end)
-        if not bIsMe and MyKey ~= nil and PlayerKey ~= nil then bIsMe = (tostring(PlayerKey) == tostring(MyKey)) end
-        return bIsMe
-    end
-
-    function ESP.IsAlive(Character)
-        local bAlive = true
-        pcall(function()
-            if Character.HealthStatus then bAlive = SecurityCommonUtils.IsHealthStatusAlive(Character.HealthStatus)
-            elseif Character.IsAlive then bAlive = Character:IsAlive()
-            elseif Character.Health ~= nil then bAlive = Character.Health > 0
-            elseif Character.HP ~= nil then bAlive = Character.HP > 0 end
-        end)
-        return bAlive
-    end
-
-    function ESP.GetTeamID(Character)
-        if not CAIsValid(Character) then return nil end
-        local TeamID = nil
-        pcall(function() if Character.GetTeamID then TeamID = Character:GetTeamID() end end)
-        if not TeamID then
-            pcall(function()
-                local PS = nil
-                if Character.GetPlayerStateSafety then PS = Character:GetPlayerStateSafety()
-                elseif Character.GetPlayerState then PS = Character:GetPlayerState() end
-                if CAIsValid(PS) then
-                    if PS.GetTeamID then TeamID = PS:GetTeamID()
-                    elseif PS.TeamID then TeamID = PS.TeamID end
-                end
-            end)
-        end
-        if not TeamID then pcall(function() if Character.TeamID then TeamID = Character.TeamID end end) end
-        return TeamID
-    end
-
-    function ESP.GetCharacterLocation(Character)
-        if not CAIsValid(Character) then return nil end
-        local Loc = nil
-        pcall(function() if Character.K2_GetActorLocation then Loc = Character:K2_GetActorLocation() end end)
-        if not Loc then pcall(function() if Game and Game.GetActorLocation then Loc = Game:GetActorLocation(Character) end end) end
-        return Loc
-    end
-
-    function ESP.InitESPCanvas()
-        if ESP.ESPCanvas and Game:IsValid(ESP.ESPCanvas) then return true end
-        local InGameUITools = nil
-        pcall(function() InGameUITools = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools") end)
-        if not InGameUITools then return false end
-        local MainControlBaseUI = nil
-        pcall(function() MainControlBaseUI = InGameUITools.GetMainControlBaseUI() end)
-        if not MainControlBaseUI or not Game:IsValid(MainControlBaseUI) then return false end
-        local ParentCanvas = nil
-        pcall(function()
-            if MainControlBaseUI.CanvasPanel_0 and Game:IsValid(MainControlBaseUI.CanvasPanel_0) then ParentCanvas = MainControlBaseUI.CanvasPanel_0
-            elseif MainControlBaseUI.CanvasPanel_42 and Game:IsValid(MainControlBaseUI.CanvasPanel_42) then ParentCanvas = MainControlBaseUI.CanvasPanel_42 end
-        end)
-        if not ParentCanvas then return false end
-        ESP.ESPCanvas = ParentCanvas
-        return true
-    end
-
-    function ESP.UpdateCanvasTransform(PC)
-        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then return end
-        local success = false
-        pcall(function()
-            local SBL = CASlateBlueprintLibrary
-            if SBL and SBL.AbsoluteToLocal then
-                local cg = ESP.ESPCanvas:GetCachedGeometry()
-                if cg then
-                    local pt0 = SBL.AbsoluteToLocal(cg, CAFVector2D and CAFVector2D(0,0) or {X=0,Y=0})
-                    local pt1 = SBL.AbsoluteToLocal(cg, CAFVector2D and CAFVector2D(100,100) or {X=100,Y=100})
-                    if pt0 and pt1 then
-                        ESP._CanvasScaleX = (pt1.X - pt0.X) / 100
-                        ESP._CanvasScaleY = (pt1.Y - pt0.Y) / 100
-                        ESP._CanvasOffsetX = pt0.X
-                        ESP._CanvasOffsetY = pt0.Y
-                        success = true
-                    end
-                end
-            end
-        end)
-        if not success then
-            local scale = 1.0
-            local WLL = CAWidgetLayoutLibrary
-            if WLL and WLL.GetViewportScale then scale = WLL.GetViewportScale(PC) or 1.0 end
-            ESP._CanvasScaleX = 1.0 / scale
-            ESP._CanvasScaleY = 1.0 / scale
-            ESP._CanvasOffsetX = 0
-            ESP._CanvasOffsetY = 0
-        end
-    end
-
-    function ESP.ScreenPixelToCanvasLocal(PC, ScreenPixelPos)
-        if not ScreenPixelPos then return CAFVector2D and CAFVector2D(0,0) or {X=0,Y=0} end
-        local scaleX = ESP._CanvasScaleX or 1.0
-        local scaleY = ESP._CanvasScaleY or 1.0
-        local offsetX = ESP._CanvasOffsetX or 0
-        local offsetY = ESP._CanvasOffsetY or 0
-        return (CAFVector2D and CAFVector2D(ScreenPixelPos.X * scaleX + offsetX, ScreenPixelPos.Y * scaleY + offsetY)) or {X = ScreenPixelPos.X * scaleX + offsetX, Y = ScreenPixelPos.Y * scaleY + offsetY}
-    end
-
-    function ESP.GetScreenCenter(PC)
-        local screenPixelW, screenPixelH = 0, 0
-        local scale = 1.0
-        pcall(function()
-            if PC and PC.GetViewportSize then
-                local vs = CAFVector2D and CAFVector2D(0,0) or {X=0,Y=0}
-                PC:GetViewportSize(vs)
-                if vs and vs.X and vs.X > 200 then screenPixelW, screenPixelH = vs.X, vs.Y end
-            end
-        end)
-        if screenPixelW <= 200 then
-            pcall(function()
-                local WLL = CAWidgetLayoutLibrary
-                if WLL and WLL.GetViewportSize then
-                    local vs = WLL.GetViewportSize(PC)
-                    if vs and vs.X and vs.X > 200 then screenPixelW, screenPixelH = vs.X, vs.Y end
-                end
-            end)
-        end
-        if screenPixelW <= 200 then
-            screenPixelW = (ESP._cachedViewportW or 1920) * scale
-            screenPixelH = (ESP._cachedViewportH or 1080) * scale
-        end
-        local centerPixel = CAFVector2D and CAFVector2D(screenPixelW / 2.0, screenPixelH / 2.0) or {X = screenPixelW / 2.0, Y = screenPixelH / 2.0}
-        return ESP.ScreenPixelToCanvasLocal(PC, centerPixel)
-    end
-
-    function ESP.GetArrowAngleRad(PC, WorldLoc, CenterCanvas)
-        local angle_rad = 0
-        local ScreenPos = CAFVector2D and CAFVector2D(0,0) or {X=0,Y=0}
-        local bProjectOK = false
-        pcall(function()
-            local res = PC:ProjectWorldLocationToScreen(WorldLoc, ScreenPos, true)
-            bProjectOK = (res == true or res == 1)
-        end)
-        if bProjectOK then
-            local canvasPos = ESP.ScreenPixelToCanvasLocal(PC, ScreenPos)
-            local dx = canvasPos.X - CenterCanvas.X
-            local dy = canvasPos.Y - CenterCanvas.Y
-            if math.abs(dx) > 0.1 or math.abs(dy) > 0.1 then
-                angle_rad = math.atan2 and math.atan2(dy, dx) or math.atan(dy, dx)
-            end
-        else
-            pcall(function()
-                local CamMgr = PC:GetPlayerCameraManager()
-                if not CAIsValid(CamMgr) then return end
-                local CamLoc = CamMgr:GetCameraLocation()
-                local CamRot = CamMgr:GetCameraRotation()
-                local dx3 = WorldLoc.X - CamLoc.X
-                local dy3 = WorldLoc.Y - CamLoc.Y
-                local enemyYaw = math.atan2 and math.atan2(dy3, dx3) or math.atan(dy3, dx3)
-                local camYaw = math.rad(CamRot.Yaw)
-                local delta = enemyYaw - camYaw
-                while delta > math.pi do delta = delta - 2*math.pi end
-                while delta < -math.pi do delta = delta + 2*math.pi end
-                angle_rad = delta + math.pi
-                while angle_rad > math.pi do angle_rad = angle_rad - 2*math.pi end
-                while angle_rad < -math.pi do angle_rad = angle_rad + 2*math.pi end
-            end)
-        end
-        return angle_rad
-    end
-
-    function ESP.UpdateCenterCircle(CenterCanvas)
-        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then ESP.RemoveCenterCircle() return end
-        local cx = CenterCanvas.X
-        local cy = CenterCanvas.Y
-        if not ESP.FOVCircleLines then ESP.FOVCircleLines = {} end
-        if not ESP.FOVCircleGlowLines then ESP.FOVCircleGlowLines = {} end
-        if not ESP.FOVCircleInnerLines then ESP.FOVCircleInnerLines = {} end
-        if not ESP.FOVCircleOuterLines then ESP.FOVCircleOuterLines = {} end
-
-        -- Helper to draw a circle ring
-        local function DrawRing(linesTable, radius, segments, thickness, color, zorder)
-            for i = 1, segments do
-                local angle1 = ((i-1) / segments) * (2 * math.pi)
-                local angle2 = (i / segments) * (2 * math.pi)
-                local x1 = cx + math.cos(angle1) * radius
-                local y1 = cy + math.sin(angle1) * radius
-                local x2 = cx + math.cos(angle2) * radius
-                local y2 = cy + math.sin(angle2) * radius
-                local dx = x2 - x1
-                local dy = y2 - y1
-                local len = math.sqrt(dx*dx + dy*dy)
-                local ang = (math.atan2 and math.atan2(dy,dx) or math.atan(dy,dx)) * (180.0 / math.pi)
-                local lineData = linesTable[i]
-                if not lineData then
-                    local Border = nil
-                    pcall(function() Border = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
-                    if Border and slua.isValid(Border) then
-                        pcall(function() Border:SetBrushColor(color) end)
-                        pcall(function() Border:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
-                        pcall(function() Border:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.0, 0.5) or {X=0,Y=0.5}) end)
-                        local Slot = ESP.ESPCanvas:AddChildToCanvas(Border)
-                        if Slot then Slot:SetAutoSize(false); Slot:SetZOrder(zorder) end
-                        lineData = { Widget = Border, Slot = Slot }
-                        linesTable[i] = lineData
-                    end
-                end
-                if lineData and lineData.Slot then
-                    pcall(function()
-                        lineData.Slot:SetPosition(CAFVector2D and CAFVector2D(x1, y1 - thickness/2.0) or {X=x1, Y=y1 - thickness/2.0})
-                        lineData.Slot:SetSize(CAFVector2D and CAFVector2D(len + 0.5, thickness) or {X=len+0.5, Y=thickness})
-                        lineData.Widget:SetRenderAngle(ang)
-                        lineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-                    end)
-                end
-            end
-        end
-
-        -- Only 1 main circle (bright yellow, sharp)
-        DrawRing(ESP.FOVCircleLines, ESP.FOVCircleRadius or 300.0, ESP.FOVCircleSegments or 72, ESP.FOVCircleThickness or 4.0, ESP.FOVCircleColor, 1)
-    end
-
-    function ESP.RemoveCenterCircle()
-        if ESP.FOVCircleLines then
-            for _, lineData in pairs(ESP.FOVCircleLines) do
-                if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
-                    pcall(function() lineData.Widget:RemoveFromParent() lineData.Widget:ConditionalBeginDestroy() end)
-                end
-            end
-        end
-        if ESP.FOVCircleGlowLines then
-            for _, lineData in pairs(ESP.FOVCircleGlowLines) do
-                if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
-                    pcall(function() lineData.Widget:RemoveFromParent() lineData.Widget:ConditionalBeginDestroy() end)
-                end
-            end
-        end
-        if ESP.FOVCircleInnerLines then
-            for _, lineData in pairs(ESP.FOVCircleInnerLines) do
-                if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
-                    pcall(function() lineData.Widget:RemoveFromParent() lineData.Widget:ConditionalBeginDestroy() end)
-                end
-            end
-        end
-        if ESP.FOVCircleOuterLines then
-            for _, lineData in pairs(ESP.FOVCircleOuterLines) do
-                if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
-                    pcall(function() lineData.Widget:RemoveFromParent() lineData.Widget:ConditionalBeginDestroy() end)
-                end
-            end
-        end
-        ESP.FOVCircleLines = {}
-        ESP.FOVCircleGlowLines = {}
-        ESP.FOVCircleInnerLines = {}
-        ESP.FOVCircleOuterLines = {}
-    end
-
-    function ESP.CreateArrowWidget()
-        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then return nil end
-
-        -- Layer 1: Outer glow halo (largest, very transparent)
-        local GlowBorder = nil
-        pcall(function() GlowBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
-        if GlowBorder and slua.isValid(GlowBorder) then
-            pcall(function() GlowBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(1.0, 0.5, 0.0, 0.1) or {R=1,G=0.5,B=0,A=0.1}) end)
-            pcall(function() GlowBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
-            pcall(function() GlowBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
-        end
-        local GlowSlot = nil
-        pcall(function()
-            GlowSlot = ESP.ESPCanvas:AddChildToCanvas(GlowBorder)
-            if GlowSlot then GlowSlot:SetAutoSize(false); GlowSlot:SetZOrder(0) end
-        end)
-
-        -- Layer 2: Mid glow (orange aura)
-        local MidGlowBorder = nil
-        pcall(function() MidGlowBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
-        if MidGlowBorder and slua.isValid(MidGlowBorder) then
-            pcall(function() MidGlowBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(1.0, 0.65, 0.0, 0.2) or {R=1,G=0.65,B=0,A=0.2}) end)
-            pcall(function() MidGlowBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
-            pcall(function() MidGlowBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
-        end
-        local MidGlowSlot = nil
-        pcall(function()
-            MidGlowSlot = ESP.ESPCanvas:AddChildToCanvas(MidGlowBorder)
-            if MidGlowSlot then MidGlowSlot:SetAutoSize(false); MidGlowSlot:SetZOrder(1) end
-        end)
-
-        -- Layer 3: Golden ring (medium, semi-transparent)
-        local RingBorder = nil
-        pcall(function() RingBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
-        if RingBorder and slua.isValid(RingBorder) then
-            pcall(function() RingBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(0.85, 0.45, 0.0, 0.5) or {R=0.85,G=0.45,B=0,A=0.5}) end)
-            pcall(function() RingBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
-            pcall(function() RingBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
-        end
-        local RingSlot = nil
-        pcall(function()
-            RingSlot = ESP.ESPCanvas:AddChildToCanvas(RingBorder)
-            if RingSlot then RingSlot:SetAutoSize(false); RingSlot:SetZOrder(2) end
-        end)
-
-        -- Layer 4: Main bright diamond (core)
-        local Border = nil
-        pcall(function() Border = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
-        if not Border or not slua.isValid(Border) then return nil end
-        pcall(function() Border:SetBrushColor(ESP.ArrowColor) end)
-        pcall(function() Border:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
-        pcall(function() Border:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
-        local Slot = nil
-        pcall(function()
-            Slot = ESP.ESPCanvas:AddChildToCanvas(Border)
-            if Slot then Slot:SetAutoSize(false); Slot:SetZOrder(4) end
-        end)
-
-        -- Layer 5: Inner gold core (medium)
-        local InnerGoldBorder = nil
-        pcall(function() InnerGoldBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
-        if InnerGoldBorder and slua.isValid(InnerGoldBorder) then
-            pcall(function() InnerGoldBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(1.0, 0.9, 0.3, 0.9) or {R=1,G=0.9,B=0.3,A=0.9}) end)
-            pcall(function() InnerGoldBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
-            pcall(function() InnerGoldBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
-        end
-        local InnerGoldSlot = nil
-        pcall(function()
-            InnerGoldSlot = ESP.ESPCanvas:AddChildToCanvas(InnerGoldBorder)
-            if InnerGoldSlot then InnerGoldSlot:SetAutoSize(false); InnerGoldSlot:SetZOrder(5) end
-        end)
-
-        -- Layer 6: Bright white-yellow center (tiny, sharp)
-        local CoreBorder = nil
-        pcall(function() CoreBorder = CGame:NewObjectFromPath("/Script/UMG.Border", ESP.ESPCanvas) end)
-        if CoreBorder and slua.isValid(CoreBorder) then
-            pcall(function() CoreBorder:SetBrushColor(CAFLinearColor and CAFLinearColor(1.0, 1.0, 0.9, 1.0) or {R=1,G=1,B=0.9,A=1}) end)
-            pcall(function() CoreBorder:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
-            pcall(function() CoreBorder:SetRenderTransformPivot(CAFVector2D and CAFVector2D(0.5, 0.5) or {X=0.5,Y=0.5}) end)
-        end
-        local CoreSlot = nil
-        pcall(function()
-            CoreSlot = ESP.ESPCanvas:AddChildToCanvas(CoreBorder)
-            if CoreSlot then CoreSlot:SetAutoSize(false); CoreSlot:SetZOrder(6) end
-        end)
-
-        return { Widget = Border, Slot = Slot, GlowWidget = GlowBorder, GlowSlot = GlowSlot, RingWidget = RingBorder, RingSlot = RingSlot, CoreWidget = CoreBorder, CoreSlot = CoreSlot, MidGlowWidget = MidGlowBorder, MidGlowSlot = MidGlowSlot, InnerGoldWidget = InnerGoldBorder, InnerGoldSlot = InnerGoldSlot }
-    end
-
-    function ESP.UpdateDirectionalArrow(KeyStr, WorldLoc, PC, CenterCanvas)
-        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then return end
-        if not WorldLoc then
-            local ld = ESP.ArrowWidgets[KeyStr]
-            if ld and ld.Widget and slua.isValid(ld.Widget) then
-                pcall(function() ld.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
-            end
-            return
-        end
-        local angle_rad = ESP.GetArrowAngleRad(PC, WorldLoc, CenterCanvas)
-        local angle_deg = angle_rad * (180.0 / math.pi)
-        local radius = ESP.FOVCircleRadius or 150.0
-        local markSize = ESP.ArrowLength or 30.0
-        local startX = CenterCanvas.X + math.cos(angle_rad) * radius
-        local startY = CenterCanvas.Y + math.sin(angle_rad) * radius
-        local LineData = ESP.ArrowWidgets[KeyStr]
-        if not LineData then
-            LineData = ESP.CreateArrowWidget()
-            if not LineData or not LineData.Widget or not LineData.Slot then return end
-            ESP.ArrowWidgets[KeyStr] = LineData
-        end
-        pcall(function()
-            local halfSize = markSize / 2.0
-            local ringSize = markSize * 1.3
-            local halfRing = ringSize / 2.0
-            local glowSize = markSize * 2.0
-            local halfGlow = glowSize / 2.0
-            local midGlowSize = markSize * 1.5
-            local halfMidGlow = midGlowSize / 2.0
-            local innerGoldSize = markSize * 0.55
-            local halfInnerGold = innerGoldSize / 2.0
-            local coreSize = markSize * 0.25
-            local halfCore = coreSize / 2.0
-            local diamondRot = angle_deg + 45.0
-
-            -- Layer 4: Main diamond
-            LineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-            LineData.Slot:SetPosition(CAFVector2D and CAFVector2D(startX - halfSize, startY - halfSize) or {X=startX - halfSize, Y=startY - halfSize})
-            LineData.Slot:SetSize(CAFVector2D and CAFVector2D(markSize, markSize) or {X=markSize, Y=markSize})
-            LineData.Widget:SetRenderAngle(diamondRot)
-
-            -- Layer 1: Outer glow halo
-            if LineData.GlowWidget and LineData.GlowSlot then
-                pcall(function()
-                    LineData.GlowWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-                    LineData.GlowSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfGlow, startY - halfGlow) or {X=startX - halfGlow, Y=startY - halfGlow})
-                    LineData.GlowSlot:SetSize(CAFVector2D and CAFVector2D(glowSize, glowSize) or {X=glowSize, Y=glowSize})
-                    LineData.GlowWidget:SetRenderAngle(diamondRot)
-                end)
-            end
-
-            -- Layer 2: Mid glow aura
-            if LineData.MidGlowWidget and LineData.MidGlowSlot then
-                pcall(function()
-                    LineData.MidGlowWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-                    LineData.MidGlowSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfMidGlow, startY - halfMidGlow) or {X=startX - halfMidGlow, Y=startY - halfMidGlow})
-                    LineData.MidGlowSlot:SetSize(CAFVector2D and CAFVector2D(midGlowSize, midGlowSize) or {X=midGlowSize, Y=midGlowSize})
-                    LineData.MidGlowWidget:SetRenderAngle(diamondRot)
-                end)
-            end
-
-            -- Layer 3: Golden ring
-            if LineData.RingWidget and LineData.RingSlot then
-                pcall(function()
-                    LineData.RingWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-                    LineData.RingSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfRing, startY - halfRing) or {X=startX - halfRing, Y=startY - halfRing})
-                    LineData.RingSlot:SetSize(CAFVector2D and CAFVector2D(ringSize, ringSize) or {X=ringSize, Y=ringSize})
-                    LineData.RingWidget:SetRenderAngle(diamondRot)
-                end)
-            end
-
-            -- Layer 5: Inner gold core
-            if LineData.InnerGoldWidget and LineData.InnerGoldSlot then
-                pcall(function()
-                    LineData.InnerGoldWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-                    LineData.InnerGoldSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfInnerGold, startY - halfInnerGold) or {X=startX - halfInnerGold, Y=startY - halfInnerGold})
-                    LineData.InnerGoldSlot:SetSize(CAFVector2D and CAFVector2D(innerGoldSize, innerGoldSize) or {X=innerGoldSize, Y=innerGoldSize})
-                    LineData.InnerGoldWidget:SetRenderAngle(diamondRot)
-                end)
-            end
-
-            -- Layer 6: Bright white-yellow center
-            if LineData.CoreWidget and LineData.CoreSlot then
-                pcall(function()
-                    LineData.CoreWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-                    LineData.CoreSlot:SetPosition(CAFVector2D and CAFVector2D(startX - halfCore, startY - halfCore) or {X=startX - halfCore, Y=startY - halfCore})
-                    LineData.CoreSlot:SetSize(CAFVector2D and CAFVector2D(coreSize, coreSize) or {X=coreSize, Y=coreSize})
-                    LineData.CoreWidget:SetRenderAngle(diamondRot)
-                end)
-            end
-        end)
-    end
-
-    function ESP.RemoveArrow(KeyStr)
-        local LineData = ESP.ArrowWidgets[KeyStr]
-        if LineData then
-            if LineData.Widget and slua.isValid(LineData.Widget) then
-                pcall(function() LineData.Widget:RemoveFromParent() LineData.Widget:ConditionalBeginDestroy() end)
-            end
-            if LineData.GlowWidget and slua.isValid(LineData.GlowWidget) then
-                pcall(function() LineData.GlowWidget:RemoveFromParent() LineData.GlowWidget:ConditionalBeginDestroy() end)
-            end
-            if LineData.MidGlowWidget and slua.isValid(LineData.MidGlowWidget) then
-                pcall(function() LineData.MidGlowWidget:RemoveFromParent() LineData.MidGlowWidget:ConditionalBeginDestroy() end)
-            end
-            if LineData.RingWidget and slua.isValid(LineData.RingWidget) then
-                pcall(function() LineData.RingWidget:RemoveFromParent() LineData.RingWidget:ConditionalBeginDestroy() end)
-            end
-            if LineData.InnerGoldWidget and slua.isValid(LineData.InnerGoldWidget) then
-                pcall(function() LineData.InnerGoldWidget:RemoveFromParent() LineData.InnerGoldWidget:ConditionalBeginDestroy() end)
-            end
-            if LineData.CoreWidget and slua.isValid(LineData.CoreWidget) then
-                pcall(function() LineData.CoreWidget:RemoveFromParent() LineData.CoreWidget:ConditionalBeginDestroy() end)
-            end
-        end
-        ESP.ArrowWidgets[KeyStr] = nil
-    end
-
-    function ESP.ClearAllArrows()
-        for KeyStr, LineData in pairs(ESP.ArrowWidgets) do
-            if LineData then
-                if LineData.Widget and slua.isValid(LineData.Widget) then
-                    pcall(function() LineData.Widget:RemoveFromParent() LineData.Widget:ConditionalBeginDestroy() end)
-                end
-                if LineData.GlowWidget and slua.isValid(LineData.GlowWidget) then
-                    pcall(function() LineData.GlowWidget:RemoveFromParent() LineData.GlowWidget:ConditionalBeginDestroy() end)
-                end
-                if LineData.MidGlowWidget and slua.isValid(LineData.MidGlowWidget) then
-                    pcall(function() LineData.MidGlowWidget:RemoveFromParent() LineData.MidGlowWidget:ConditionalBeginDestroy() end)
-                end
-                if LineData.RingWidget and slua.isValid(LineData.RingWidget) then
-                    pcall(function() LineData.RingWidget:RemoveFromParent() LineData.RingWidget:ConditionalBeginDestroy() end)
-                end
-                if LineData.InnerGoldWidget and slua.isValid(LineData.InnerGoldWidget) then
-                    pcall(function() LineData.InnerGoldWidget:RemoveFromParent() LineData.InnerGoldWidget:ConditionalBeginDestroy() end)
-                end
-                if LineData.CoreWidget and slua.isValid(LineData.CoreWidget) then
-                    pcall(function() LineData.CoreWidget:RemoveFromParent() LineData.CoreWidget:ConditionalBeginDestroy() end)
-                end
-            end
-        end
-        ESP.ArrowWidgets = {}
-    end
-
-    function ESP.ScanAndUpdate()
-        if not ESP.InitESPCanvas() then return end
-        local PC = ESP.GetMyPlayerController()
-        if not CAIsValid(PC) then return end
-        ESP.UpdateCanvasTransform(PC)
-        local centerCanvas = ESP.GetScreenCenter(PC)
-        ESP.UpdateCenterCircle(centerCanvas)
-        local AllChars = ESP.GetAllCharacters()
-        if not AllChars then return end
-        local MyKey = ESP.GetMyPlayerKey()
-        local MyChar = nil
-        pcall(function()
-            local GDP = ESP.GetGameplayData()
-            if GDP and GDP.GetLocalCharacter then MyChar = GDP.GetLocalCharacter()
-            elseif PC and PC.GetPawn then MyChar = PC:GetPawn() end
-        end)
-        local MyTeamID = ESP.GetTeamID(MyChar)
-        local SeenKeys = {}
-        for PlayerKey, Character in pairs(AllChars) do
-            if CAIsValid(Character) then
-                local bIsMe = ESP.IsMe(Character, PlayerKey, MyKey)
-                local KeyStr = tostring(PlayerKey)
-                local bAlive = ESP.IsAlive(Character)
-                local TeamID = ESP.GetTeamID(Character)
-                local bSkip = bIsMe
-                if MyTeamID ~= nil and TeamID == MyTeamID and not bIsMe then bSkip = true end
-                if not bAlive then bSkip = true end
-                if not bSkip then
-                    SeenKeys[KeyStr] = true
-                    ESP._EnemyCache[KeyStr] = Character
-                    local Loc = ESP.GetCharacterLocation(Character)
-                    ESP.UpdateDirectionalArrow(KeyStr, Loc, PC, centerCanvas)
-                end
-            end
-        end
-        for KeyStr in pairs(ESP.ArrowWidgets) do
-            if not SeenKeys[KeyStr] then ESP.RemoveArrow(KeyStr); ESP._EnemyCache[KeyStr] = nil end
-        end
-    end
-
-    function ESP.UpdateLight()
-        if not ESP.ESPCanvas or not Game:IsValid(ESP.ESPCanvas) then return end
-        local PC = ESP.GetMyPlayerController()
-        if not CAIsValid(PC) then return end
-        ESP.UpdateCanvasTransform(PC)
-        local centerCanvas = ESP.GetScreenCenter(PC)
-        for KeyStr, Character in pairs(ESP._EnemyCache) do
-            if CAIsValid(Character) and ESP.IsAlive(Character) then
-                local Loc = ESP.GetCharacterLocation(Character)
-                ESP.UpdateDirectionalArrow(KeyStr, Loc, PC, centerCanvas)
-            else
-                ESP.RemoveArrow(KeyStr)
-                ESP._EnemyCache[KeyStr] = nil
-            end
-        end
-    end
-
-    function ESP.AttachTimers()
-        pcall(function()
-            local pc = ESP.GetMyPlayerController()
-            if not slua.isValid(pc) or not pc.AddGameTimer then return end
-            local now = os.time()
-            local lastPC = ESP._ActiveTimerPC
-            if lastPC and slua.isValid(lastPC) and lastPC == pc then
-                if ESP._ActiveTimerTick and (now - ESP._ActiveTimerTick) < 5 then return end
-            end
-            ESP._ActiveTimerPC = pc
-            ESP._ActiveTimerTick = now
-            pcall(function()
-                pc:AddGameTimer(ESP.nUpdateInterval or 0.5, true, function()
-                    ESP._ActiveTimerTick = os.time()
-                    if ESP.bActive then pcall(function() ESP.ScanAndUpdate() end) end
-                end)
-            end)
-            pcall(function()
-                pc:AddGameTimer(ESP._LightUpdateInterval or 0.05, true, function()
-                    ESP._ActiveTimerTick = os.time()
-                    if ESP.bActive then pcall(function() ESP.UpdateLight() end) end
-                end)
-            end)
-        end)
-    end
-
-    function ESP.Start()
-        if ESP.bActive then return end
-        ESP.bActive = true
-        ESP.ScanAndUpdate()
-        ESP.AttachTimers()
-    end
-
-    function ESP.Stop()
-        ESP.bActive = false
-        ESP.ClearAllArrows()
-        ESP.RemoveCenterCircle()
-        ESP._EnemyCache = {}
-        ESP.ESPCanvas = nil
-    end
-
-    _G.CircleArrowESP = ESP
-end
-
--- ============================================================
--- MAIN UPDATE LOOP (CHAMS + ESP V2 + WEAPON GLOW + IPAD + WHITE BODY + FPS + CIRCLE ARROW)
--- ============================================================
-local function MainUpdate()
-    pcall(function()
-        local localPlayer = GameplayData and GameplayData.GetPlayerCharacter()
-        if not slua.isValid(localPlayer) then return end
-
-        -- Update Chams
-        if _G.Mod_Chams_Enabled then
-
-
--- ============================================================
--- CIRCLE & ARROW ESP BOOTSTRAP
--- ============================================================
-_G.Mod_CircleArrow_Enabled = (_G.Mod_CircleArrow_Enabled ~= false)
-
-local function StartIntegratedCircleArrowESP()
-    pcall(function()
-        if not _G.CircleArrowESP then
-            InitCircleArrowESP()
-        end
-
-        local ESP = _G.CircleArrowESP
-        if not ESP then return end
-
-        if _G.Mod_CircleArrow_Enabled then
-            ESP.Start()
-        else
-            ESP.Stop()
-        end
-    end)
-end
-
-pcall(function()
-    if _G.Game and _G.Game.AddGameTimer then
-        _G.Game:AddGameTimer(1.0, false, StartIntegratedCircleArrowESP)
-    else
-        local ok, ticker = pcall(require, "common.time_ticker")
-        if ok and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(1.0, StartIntegratedCircleArrowESP)
-        end
-    end
-end)
-
-_G.SetCircleArrowESPEnabled = function(enabled)
-    _G.Mod_CircleArrow_Enabled = enabled and true or false
-    pcall(function()
-        if not _G.CircleArrowESP then
-            InitCircleArrowESP()
-        end
-        if _G.Mod_CircleArrow_Enabled then
-            _G.CircleArrowESP.Start()
-        else
-            _G.CircleArrowESP.Stop()
-        end
-    end)
-end
-
-
 -- ========================================== 
 -- RETURN CLASS
 -- ========================================== 
@@ -8305,4 +8276,3 @@ return require("combine_class").DeclareFeature(CBRPlayerCharacterBase, {
 		GeneralShowSpotFeature = "GameLua.Mod.BRMod.Gameplay.Feature.PlayerCharacterGeneralShowSpotFeature"
 	}
 })
-      
