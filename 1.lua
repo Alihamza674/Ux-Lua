@@ -139,7 +139,7 @@ do
                         FL(px+2, py+ph-3, pw-4, 1, FLinearColor(0.85,0.68,0.0,1.0), 20002)
                         FT(px+pw*0.5, py+25, "VIP SKIN SYSTEM", 22, FLinearColor(1.0,0.84,0.08,1.0), 20010)
                         FT(px+pw*0.5, py+70, "Skin Enable Kar Na Hai Kya?", 18, FLinearColor(0.9,0.9,0.9,1.0), 20010)
-                        FT(px+pw*0.5, py+95, "@DEVIL_JOKER_OP", 14, FLinearColor(0.85,0.68,0.0,0.8), 20010)
+                        FT(px+pw*0.5, py+95, "@UX_Official", 14, FLinearColor(0.85,0.68,0.0,0.8), 20010)
                         -- ON button
                         FL(px+30, py+120, 130, 50, FLinearColor(0.12,0.09,0.02,1.0), 20003)
                         FL(px+32, py+122, 126, 46, FLinearColor(0.85,0.68,0.0,0.15), 20004)
@@ -3473,7 +3473,7 @@ pcall(function()
     local YellowBoxStarted = false
     local YELLOW_COLOR = FLinearColor(1.0, 0.92, 0.016, 1.0)
     local TEXT_COLOR = FSlateColor(FLinearColor(0, 0, 0, 1))
-    local DISPLAY_TEXT = "TELEGRAM: @DEVIL_JOKER_OP"
+    local DISPLAY_TEXT = "TELEGRAM: @UX_Official"
     local WIDGET_BP_PATH = "/Game/UMG/UI_BP/Common/BaseComponent/CommonBaseComponent_TextButton_UIBP.CommonBaseComponent_TextButton_UIBP"
 
     local function UpdateYellowBoxContent()
@@ -4189,7 +4189,7 @@ local function BuildMenu()
     Layer(bgPanel, tbX + 8, tbY + tbH * 0.5 - 2, 4, 4, C.red, 7)
     Layer(bgPanel, tbX + tbW - 12, tbY + tbH * 0.5 - 2, 4, 4, C.red, 7)
     -- Title text (red)
-    Text(bgPanel, "MODDED BY @DEVIL_JOKER_OP", M_W * 0.5, titleY, 17, C.red_bright, 400, 0.5, 0.5)
+    Text(bgPanel, "MODDED BY @UX_Official", M_W * 0.5, titleY, 17, C.red_bright, 400, 0.5, 0.5)
 
     -- Subtitle with decorative lines
     Layer(bgPanel, M_W * 0.5 - 80, headerY + 62, 60, 1, C.gold_deep, 5)
@@ -4284,7 +4284,7 @@ local function BuildMenu()
     local contentX, contentW = 16, M_W - 32
 
     local tabContents = {
-        { title = "DEVILJOKER ESP SYSTEM", options = {
+        { title = "UX_Official ESP SYSTEM", options = {
             {label="WALL ESP", key="ESP_Enabled"},
             {label="ESP Player Count", key="ESP_TotalCount"},
             {label="ESP Name", key="ESP_Name"},
@@ -4338,7 +4338,7 @@ local function BuildMenu()
         }},
         { title = "MISC / VIP STATUS", options = {
             {isLabel=true, label="PREMIUM EDITION"},
-            {isLabel=true, label="DEVIL_JOKER_OP VIP ACCESS"},
+            {isLabel=true, label="UX_Official VIP ACCESS"},
         }},
     }
     
@@ -4395,7 +4395,7 @@ local function BuildMenu()
     -- Red accent dots in footer
     Layer(bgPanel, M_W * 0.5 - 80, M_H - 13, 3, 3, C.red, 5)
     Layer(bgPanel, M_W * 0.5 + 77, M_H - 13, 3, 3, C.red, 5)
-    Text(bgPanel, "@DEVIL_JOKER_OP  |  PREMIUM EDITION", M_W * 0.5, M_H - 12, 9, C.gold_dark, 400, 0.5, 0.5)
+    Text(bgPanel, "@UX_Official  |  PREMIUM EDITION", M_W * 0.5, M_H - 12, 9, C.gold_dark, 400, 0.5, 0.5)
     Layer(bgPanel, 0, M_H - 2, M_W, 1, C.gold_deep, 5)
     Layer(bgPanel, 0, M_H - 1, M_W, 1, C.gold, 5)
 
@@ -4773,7 +4773,7 @@ local function ShowSkinPopup()
     pcall(function()
         local t = CGame:NewObjectFromPath("/Script/UMG.TextBlock", canvas)
         if t and slua.isValid(t) then
-            t:SetText("@DEVIL_JOKER_OP")
+            t:SetText("@UX_Official")
             if FSlateColor then t:SetColorAndOpacity(FSlateColor(FLinearColor(0.85,0.68,0.0,0.8)))
             else t:SetColorAndOpacity(FLinearColor(0.85,0.68,0.0,0.8)) end
             if t.Font then local f = t.Font f.Size = 14 t.Font = f end
