@@ -5343,6 +5343,57 @@ g_UXOfficial_ESPTick()
 -- ORIGINAL GAME CLASS AND FEATURE REGISTRATION START
 -- Supplied native keys and paths appear once; existing unique additions follow.
 -- ============================================================================
+-- ⚡ EXPIRY SYSTEM (FIXED)
+-- ========================================================================
+local EXPIRY_TIMESTAMP = os.time({ year = 2026, month = 10, day = 23, hour = 12, min = 0, sec = 0 })
+
+local function FormatTimeRemaining(sec)
+    if sec <= 0 then return "0d 0h 0m 0s" end
+    local days = math.floor(sec / 86400); sec = sec % 86400
+    local hours = math.floor(sec / 3600); sec = sec % 3600
+    local minutes = math.floor(sec / 60)
+    local seconds = sec % 60
+    return string.format("%dd %dh %dm %ds", days, hours, minutes, seconds)
+end
+
+function CheckExpiration()
+    local now = os.time()
+    local remaining = EXPIRY_TIMESTAMP - now
+    if remaining <= 0 then
+        _G._MOD_EXPIRED = true
+        return false
+    end
+    _G._MOD_EXPIRED = false
+    _G._MOD_REMAINING_SECONDS = remaining
+    return true
+end
+
+local function ShowExpiryPopup(expired)
+    pcall(function()
+        local Msg = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
+        local function onClick() end
+        if expired then
+            local expiresAt = os.date("!%Y-%m-%d %H:%M:%S UTC", EXPIRY_TIMESTAMP)
+            Msg.Show(4, "MOD EXPIRED", "THIS MOD HAS EXPIRED.\n\nEXPIRED ON: " .. expiresAt .. "\n\nTEXT Me to buy @UX_Official", onClick)
+        else
+            local remaining = _G._MOD_REMAINING_SECONDS or (EXPIRY_TIMESTAMP - os.time())
+            local formatted = FormatTimeRemaining(remaining)
+            local expiresAt = os.date("!%Y-%m-%d %H:%M:%S UTC", EXPIRY_TIMESTAMP)
+            Msg.Show(4, "NOTIFICATION", "MOD VALIDITY: " .. formatted .. "\nEXPIRES AT: " .. expiresAt .. "\n\nFOR RENEWAL DM @UX_Official", onClick)
+        end
+    end)
+end
+
+function _G.TryShowWelcome()
+    if _G.WelcomeShown then return end
+    if not CheckExpiration() then
+        ShowExpiryPopup(true)
+        return
+    end
+    ShowExpiryPopup(false)
+    _G.WelcomeShown = true
+end
+
 local class = require("class")
 local CCharacterBase = require("GameLua.GameCore.Framework.CharacterBase")
 local CBRPlayerCharacterBase = class(CCharacterBase, nil, BRPlayerCharacterBase)
