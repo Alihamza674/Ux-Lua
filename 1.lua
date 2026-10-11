@@ -1,3 +1,4 @@
+do -- Isolate login implementation locals from the main gameplay chunk.
 -- Standalone Murshid login/key module for the supplied PUBG/SLua runtime.
 -- require("MurshidLogin") returns its API; Start() opens key UI.
 local existing=_G.MasterAhsanLogin
@@ -1205,7 +1206,7 @@ end
 -- Integrated host bootstrap: show authentication UI before host UI startup.
 API.Start()
 local UX_LOGIN_API = API
-
+end -- Close login-only scope so its locals do not count toward the main chunk limit.
 
 -- ============================================================================
 -- Original main Lua script follows; authentication module is initialized above.
