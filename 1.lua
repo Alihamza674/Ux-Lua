@@ -1,3 +1,1216 @@
+-- Standalone Murshid login/key module for the supplied PUBG/SLua runtime.
+-- require("MurshidLogin") returns its API; Start() opens key UI.
+local existing=_G.MasterAhsanLogin
+if existing and existing.Version=="MasterAhsanLogin.Murshid.1" and not existing.Stopped then return existing end
+if existing and existing.Stop then pcall(existing.Stop) end
+if _G.LunarLoginRuntime and _G.LunarLoginRuntime.DestroyUI then pcall(_G.LunarLoginRuntime.DestroyUI) end
+_G.LunarLoginRuntime=nil
+local API={Version="MasterAhsanLogin.Murshid.1",Started=false,Stopped=false,PendingTimer=false,Subscribers={},Errors=0}
+_G.MasterAhsanLogin=API
+local loginStorageFilename = "MASTERPIECE_UMG_ESP_settings.lua"
+local function loginStoragePaths()
+    local paths = {
+        "//storage/emulated/0/Android/data/com.tencent.ig/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
+        "//storage/emulated/0/Android/data/com.vng.pubgmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
+        "//storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
+        "//storage/emulated/0/Android/data/com.rekoo.pubgm/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
+        "//storage/emulated/0/Android/data/com.pubg.imobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
+        "Documents/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
+        "ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
+        loginStorageFilename
+    }
+    local home=nil
+    pcall(function() if os and os.getenv then home=os.getenv("HOME") end end)
+    if type(home)=="string" and home~="" then
+        table.insert(paths,1,home.."/Documents/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename)
+    end
+    return paths
+end
+-- Replace the SaveGames file only after write/flush/close succeed where Lua
+-- exposes rename. A failed temporary write keeps the last saved file intact.
+local function loginWriteSettings(path,payload)
+    local atomic=os and type(os.rename)=="function"
+    local target=atomic and path..".tmp" or path
+    local opened,file=pcall(io.open,target,"w")
+    if not opened or not file then return false,"Open failed: "..target end
+    local closed=false
+    local ok,err=pcall(function()
+        local result,reason=file:write(payload)
+        assert(result,reason or "Settings write failed")
+        if file.flush then local flushed,why=file:flush();assert(flushed,why or "Settings flush failed") end
+        local result,reason=file:close();closed=true
+        assert(result,reason or "Settings close failed")
+    end)
+    if not closed then pcall(function() file:close() end) end
+    if ok and atomic then
+        local called,result,reason=pcall(os.rename,target,path)
+        ok=called and result~=nil and result~=false
+        err=ok and nil or (reason or result or "Settings rename failed")
+    end
+    if not ok and atomic and os.remove then pcall(os.remove,target) end
+    return ok,err,atomic
+end
+
+local loginLegacyStoragePath=nil
+
+
+-- One authorization session per Lua process; gameplay identity never owns it.
+do
+    local licenseScope
+local MasterLicenseConfig = {
+    url = 'https://ios.murshid-loader.shop/connect', game = 'PUBG',
+    timeout = 10, clockSkew = 120, expiryPath = nil,
+    manualExpiry = "2026-12-31 23:59:59", tamperTolerance = 5,
+    secret = 'DIAMONDYT',
+}
+
+local MasterLicenseCore = (function()
+    local Primitives = (function()
+        local floor, abs, max = math.floor, math.abs, math.max
+        local byte, char, format = string.byte, string.char, string.format
+        local U32 = 4294967296
+        local AND, XOR = {}, {}
+        for a = 0, 15 do for b = 0, 15 do
+            local av, bv, both, different, place = a, b, 0, 0, 1
+            for _ = 1, 4 do
+                local x, y = av % 2, bv % 2
+                if x == 1 and y == 1 then both = both + place end
+                if x ~= y then different = different + place end
+                av, bv, place = floor(av / 2), floor(bv / 2), place * 2
+            end
+            AND[a * 16 + b], XOR[a * 16 + b] = both, different
+        end end
+        local function bitop(a, b, lookup)
+            local value, place = 0, 1
+            for _ = 1, 8 do
+                value = value + lookup[(a % 16) * 16 + b % 16] * place
+                a, b, place = floor(a / 16), floor(b / 16), place * 16
+            end
+            return value
+        end
+        local function band(a, b) return bitop(a, b, AND) end
+        local function bxor(a, b) return bitop(a, b, XOR) end
+        local function rol(value, amount)
+            local divisor = 2 ^ (32 - amount)
+            return (value % divisor) * 2 ^ amount + floor(value / divisor)
+        end
+        local function little32(value)
+            return char(value % 256, floor(value / 256) % 256,
+                floor(value / 65536) % 256, floor(value / 16777216) % 256)
+        end
+        local K = {
+            0xd76aa478,0xe8c7b756,0x242070db,0xc1bdceee,0xf57c0faf,0x4787c62a,0xa8304613,0xfd469501,
+            0x698098d8,0x8b44f7af,0xffff5bb1,0x895cd7be,0x6b901122,0xfd987193,0xa679438e,0x49b40821,
+            0xf61e2562,0xc040b340,0x265e5a51,0xe9b6c7aa,0xd62f105d,0x02441453,0xd8a1e681,0xe7d3fbc8,
+            0x21e1cde6,0xc33707d6,0xf4d50d87,0x455a14ed,0xa9e3e905,0xfcefa3f8,0x676f02d9,0x8d2a4c8a,
+            0xfffa3942,0x8771f681,0x6d9d6122,0xfde5380c,0xa4beea44,0x4bdecfa9,0xf6bb4b60,0xbebfbc70,
+            0x289b7ec6,0xeaa127fa,0xd4ef3085,0x04881d05,0xd9d4d039,0xe6db99e5,0x1fa27cf8,0xc4ac5665,
+            0xf4292244,0x432aff97,0xab9423a7,0xfc93a039,0x655b59c3,0x8f0ccc92,0xffeff47d,0x85845dd1,
+            0x6fa87e4f,0xfe2ce6e0,0xa3014314,0x4e0811a1,0xf7537e82,0xbd3af235,0x2ad7d2bb,0xeb86d391
+        }
+        local SHIFT = {7,12,17,22,5,9,14,20,4,11,16,23,6,10,15,21}
+        local function md5_raw(input)
+            assert(type(input) == "string", "MD5 input must be a string")
+            local size = #input
+            local message = input .. char(128) .. string.rep(char(0), (55 - size) % 64)
+                .. little32((size * 8) % U32) .. little32(floor(size / 536870912))
+            local h0, h1, h2, h3 = 0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476
+            local words = {}
+            for offset = 1, #message, 64 do
+                for j = 0, 15 do
+                    local a, b, c, d = byte(message, offset + j * 4, offset + j * 4 + 3)
+                    words[j] = a + b * 256 + c * 65536 + d * 16777216
+                end
+                local a, b, c, d = h0, h1, h2, h3
+                for i = 0, 63 do
+                    local f, g, shiftBase
+                    if i < 16 then
+                        f, g, shiftBase = band(b, c) + band(U32 - 1 - b, d), i, 0
+                    elseif i < 32 then
+                        f, g, shiftBase = band(d, b) + band(U32 - 1 - d, c), (5 * i + 1) % 16, 4
+                    elseif i < 48 then
+                        f, g, shiftBase = bxor(bxor(b, c), d), (3 * i + 5) % 16, 8
+                    else
+                        local bOrNotD = U32 - 1 - band(U32 - 1 - b, d)
+                        f, g, shiftBase = bxor(c, bOrNotD), (7 * i) % 16, 12
+                    end
+                    local nextB = (b + rol((a + f + K[i + 1] + words[g]) % U32,
+                        SHIFT[shiftBase + i % 4 + 1])) % U32
+                    a, b, c, d = d, nextB, b, c
+                end
+                h0, h1, h2, h3 = (h0 + a) % U32, (h1 + b) % U32, (h2 + c) % U32, (h3 + d) % U32
+            end
+            return little32(h0) .. little32(h1) .. little32(h2) .. little32(h3)
+        end
+        local function hex(input)
+            return (input:gsub(".", function(c) return format("%02x", byte(c)) end))
+        end
+        local function md5(input) return hex(md5_raw(input)) end
+        local function form_encode(input)
+            assert(type(input) == "string", "Form value must be a string")
+            return (input:gsub("[^A-Za-z0-9%-%._~ ]", function(c)
+                return format("%%%02X", byte(c)) end):gsub(" ", "+"))
+        end
+        local function constant_time_equal(a, b)
+            if type(a) ~= "string" or type(b) ~= "string" then return false end
+            local difference = abs(#a - #b)
+            for i = 1, max(#a, #b) do
+                difference = difference + abs((byte(a, i) or 0) - (byte(b, i) or 0))
+            end
+            return difference == 0
+        end
+        local function name_uuid(input)
+            local digest = md5_raw(input)
+            local h = hex(digest:sub(1,6) .. char(byte(digest,7) % 16 + 48)
+                .. digest:sub(8,8) .. char(byte(digest,9) % 64 + 128) .. digest:sub(10))
+            return h:sub(1,8) .. "-" .. h:sub(9,12) .. "-" .. h:sub(13,16)
+                .. "-" .. h:sub(17,20) .. "-" .. h:sub(21,32)
+        end
+        return {md5 = md5, md5_raw = md5_raw, form_encode = form_encode,
+                constant_time_equal = constant_time_equal, name_uuid = name_uuid}
+    end)()
+
+    local SESSION_KEY='__LunarLicenseSessionV7'
+    local function loadSession()
+        local t=rawget(_G,SESSION_KEY)
+        if type(t)=='table' and t.authorized==true and t.scope==licenseScope then return t end
+    end
+    local function saveSession(expiresAt)
+        _G[SESSION_KEY]={authorized=true,expiresAt=expiresAt,scope=licenseScope}
+    end
+    local function clearSession() _G[SESSION_KEY]=nil end
+
+    local CreateLocalExpiry = function(cfg)
+        local E = {}
+        local expiredText = 'Mod expired. DM @Masterpiece2025 for renewal.'
+        local tamperText  = "Don't be over smart"
+        local blockedMessage, blockedPhase
+        local function finite(n) return type(n) == 'number' and n == n and n ~= math.huge and n ~= -math.huge end
+        local function parse(text)
+            if type(text) ~= 'string' then return nil end
+            local y,m,d,h,n,s = text:match('^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d):(%d%d)$')
+            y,m,d,h,n,s = tonumber(y),tonumber(m),tonumber(d),tonumber(h),tonumber(n),tonumber(s)
+            if not y or not m or not d or not h or not n or not s or y < 1970 or y > 9999 or m < 1 or m > 12 or h > 23 or n > 59 or s > 59 then return nil end
+            local leap = y % 4 == 0 and (y % 100 ~= 0 or y % 400 == 0)
+            local months = {31, leap and 29 or 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+            if d < 1 or d > months[m] then return nil end
+            local prior = y - 1
+            local days = 365 * (y - 1970) + math.floor(prior / 4) - math.floor(1969 / 4)
+                - math.floor(prior / 100) + math.floor(1969 / 100)
+                + math.floor(prior / 400) - math.floor(1969 / 400)
+            for i = 1, m - 1 do days = days + months[i] end
+            return (days + d - 1) * 86400 + h * 3600 + n * 60 + s - 6 * 3600
+        end
+        local configured = type(cfg.manualExpiry) == 'string' and cfg.manualExpiry:match('^%s*(.-)%s*$') or cfg.manualExpiry
+        local expiry = parse(configured)
+        local skew = cfg.clockSkew or 120
+        if configured ~= nil and configured ~= '' and not expiry then
+            blockedMessage, blockedPhase = 'Invalid local expiry date. Use YYYY-MM-DD HH:MM:SS.', 'error'
+        end
+        local function block(message, phase)
+            if not blockedMessage then blockedMessage, blockedPhase = message, phase end
+            return false, blockedMessage, blockedPhase
+        end
+        function E.Status() return not blockedMessage, blockedMessage, blockedPhase end
+        function E.MarkTampered() return block(tamperText, 'tampered') end
+        function E.GetExpiry() return expiry end
+        function E.Accept(server, now, world, phone, rtt)
+            if blockedMessage then return E.Status() end
+            if not finite(server) or not finite(now) or now < 0 or world == nil
+                or not finite(rtt) or rtt < 0 or not finite(phone) then
+                return block('Clock verification unavailable.', 'error')
+            end
+            if math.abs(phone - server) > skew + rtt then return E.MarkTampered() end
+            if expiry and server + rtt >= expiry then return block(expiredText, 'expired') end
+            return true
+        end
+        return E
+    end
+
+    local CreateAuth = function(P, cfg, deps)
+        local A = {}
+        licenseScope=P.md5(cfg.url.."\0"..cfg.game.."\0"..cfg.secret)
+        local phase, message = 'locked', 'Enter your key to sign in.'
+        local allowed, pending, generation = false, nil, 0
+        local expiresAt
+        local lastRequestLatencyMs, lastResponseTime, lastResponseWorld
+        local startFn, stopFn, payloadStarted, restartRequired
+        local localExpiry = deps.localExpiry
+        do
+            local stored = loadSession()
+            if stored then
+                allowed = true; expiresAt = stored.expiresAt
+                phase, message = 'active', 'Session restored'
+            end
+        end
+        if localExpiry then
+            local ok, text, state = localExpiry.Status()
+            if not ok then message, phase = text, state end
+        end
+        local function finite(n) return type(n) == 'number' and n == n and n ~= math.huge and n ~= -math.huge end
+        local function readClock()
+            local ok, n, w = pcall(deps.clock)
+            if ok and finite(n) and n >= 0 and w ~= nil then return n, w end
+        end
+        local function notify(text, state)
+            message, phase = text, state
+            if type(deps.status) == 'function' then pcall(deps.status, text, state) end
+        end
+        local function stopPayload()
+            if payloadStarted then
+                payloadStarted = false
+                local ok, accepted = pcall(stopFn)
+                if not ok or accepted == false then restartRequired = true end
+            end
+        end
+        local function revoke(text, state)
+            generation = generation + 1
+            allowed, pending, expiresAt = false, nil, nil
+            lastRequestLatencyMs, lastResponseTime, lastResponseWorld = nil, nil, nil
+            stopPayload()
+            local localDenied = false
+            if localExpiry then
+                local ok, localText, localPhase = localExpiry.Status()
+                if not ok then text, state, localDenied = localText, localPhase, true end
+            end
+            notify(restartRequired and not localDenied
+                and 'Restart required: payload cleanup failed.' or text, state or 'error')
+        end
+        local function startPayload()
+            if payloadStarted or not startFn then return true end
+            payloadStarted = true
+            local before = generation
+            local ok, accepted = pcall(startFn)
+            if not ok or accepted == false then
+                restartRequired = true
+                revoke('Restart required: offline script startup failed.', 'error')
+                return false
+            end
+            return generation == before and allowed
+        end
+        local function denyReason(reason)
+            if type(reason) ~= 'string' then return 'Expired' end
+            local lower = reason:sub(1, 120):lower():gsub('[_%s%-]+', ' ')
+            if lower == 'max devices' or lower == 'maximum devices'
+                or lower == 'max devices reached' then return 'Max Devices' end
+            local clean = reason
+            for _, field in ipairs({'key', 'serial'}) do
+                if pending and type(pending[field]) == 'string' and #pending[field] > 0 then
+                    local needle = pending[field]:gsub('([^%w])', '%%%1')
+                    clean = clean:gsub(needle, '[' .. field .. ']')
+                end
+            end
+            if type(cfg.secret) == 'string' and #cfg.secret > 0 then
+                clean = clean:gsub(cfg.secret:gsub('([^%w])', '%%%1'), '[credential]')
+            end
+            clean = clean:gsub('[%c]', ' '):sub(1, 120)
+            return clean == '' and 'Expired' or ('Expired: ' .. clean)
+        end
+        local function configuredExpiry(result)
+            if cfg.expiryPath == nil then return nil, true end
+            if type(cfg.expiryPath) ~= 'table' or #cfg.expiryPath == 0 then return nil, false end
+            local v = result
+            for _, name in ipairs(cfg.expiryPath) do
+                if type(v) ~= 'table' then return nil, false end
+                v = rawget(v, name)
+            end
+            return v, finite(v) and v > 0 and v % 1 == 0
+        end
+        local function begin(key)
+            if restartRequired or pending then return false end
+            if localExpiry then
+                local ok, text, state = localExpiry.Status()
+                if not ok then revoke(text, state); return false end
+            end
+            if type(key) ~= 'string' then key = '' end
+            key = key:match('^%s*(.-)%s*$')
+            if #key == 0 or #key > 512 then
+                revoke('Expired: enter a valid key.', 'denied'); return false
+            end
+            local now, world = readClock()
+            if not now then
+                revoke('Phone clock unavailable. Please try again.', 'error'); return false
+            end
+            local okSerial, serial = pcall(deps.serial, key)
+            if not okSerial or type(serial) ~= 'string' or #serial == 0 or #serial > 512 then
+                local failure=tostring(serial)
+                local text='Device identifier unavailable.'
+                if not okSerial and failure:find('DEVICE_CACHE_CONFLICT',1,true) then
+                    text='Saved device records conflict. Restore the registered device backup.'
+                elseif not okSerial and failure:find('DEVICE_CACHE_RECOVERY_REQUIRED',1,true) then
+                    text='Saved device data could not be recovered. Check storage or restore its backup.'
+                elseif not okSerial and failure:find('DEVICE_CACHE_SAVE_FAILED',1,true) then
+                    text='Device cache could not be saved. Check game storage access.'
+                end
+                revoke(text,'error');return false
+            end
+            generation = generation + 1
+            local requestId = generation
+            pending = {id = requestId, key = key, serial = serial,
+                       started = now, world = world, deadline = now + cfg.timeout}
+            notify('Signing in...', 'pending')
+            if not pending or pending.id ~= requestId or generation ~= requestId then return false end
+            local body = 'game=' .. P.form_encode(cfg.game)
+                .. '&user_key=' .. P.form_encode(key)
+                .. '&serial=' .. P.form_encode(serial)
+            local function received(success, raw)
+                if not pending or pending.id ~= requestId or generation ~= requestId then return end
+                local current, worldNow = readClock()
+                if not current or worldNow ~= pending.world or current < pending.started
+                    or current >= pending.deadline then
+                    revoke('Request expired. Please sign in again.', 'error'); return
+                end
+                if success ~= true or type(raw) ~= 'string' or #raw == 0 or #raw > 32768 then
+                    revoke('Connection failed. Please try again.', 'error'); return
+                end
+                local ok, result = pcall(deps.decode, raw)
+                if not ok or type(result) ~= 'table' then
+                    revoke('Invalid server response.', 'error'); return
+                end
+                if result.status ~= true then revoke(denyReason(result.reason), 'denied'); return end
+                local data = result.data
+                if type(data) ~= 'table' or type(data.token) ~= 'string' or #data.token ~= 32
+                    or not data.token:match('^[%x]+$') or not finite(data.rng) or data.rng % 1 ~= 0 then
+                    revoke('Incomplete server response.', 'error'); return
+                end
+                local expected = P.md5(cfg.game .. '-' .. key .. '-' .. serial .. '-' .. cfg.secret)
+                if not P.constant_time_equal(data.token:lower(), expected) then
+                    revoke('Server token verification failed.', 'denied'); return
+                end
+                local okWall, wall = pcall(deps.wall)
+                if not okWall or not finite(wall) then
+                    revoke('Phone clock unavailable.', 'error'); return
+                end
+                if localExpiry then
+                    local accepted, text, state = localExpiry.Accept(
+                        data.rng, current, worldNow, wall, current - pending.started)
+                    if not accepted then revoke(text, state); return end
+                elseif math.abs(wall - data.rng) > cfg.clockSkew then
+                    revoke('Phone/server clock mismatch. Check automatic time.', 'error'); return
+                end
+                local expiry, validExpiry = configuredExpiry(result)
+                if not validExpiry then
+                    revoke('Configured server expiry field is missing or invalid.', 'error'); return
+                end
+                if expiry and expiry - data.rng - (current - pending.started) <= 0 then
+                    revoke('Expired', 'denied'); return
+                end
+                local fixedExpiry = localExpiry and localExpiry.GetExpiry()
+                if fixedExpiry then expiry = math.min(expiry or fixedExpiry, fixedExpiry) end
+                lastRequestLatencyMs = (current - pending.started) * 1000
+                lastResponseTime, lastResponseWorld = current, worldNow
+                pending = nil
+                allowed, expiresAt = true, expiry
+                saveSession(expiresAt)
+                if not startPayload() then return end
+                notify('Login successful.', 'active')
+            end
+            local ok, accepted = pcall(deps.post, cfg.url,
+                {['Content-Type'] = 'application/x-www-form-urlencoded'},
+                body, received, cfg.timeout)
+            if not ok or accepted == false then
+                revoke('HTTP request could not start.', 'error'); return false
+            end
+            return true
+        end
+        function A.Login(key) if allowed then return false end; return begin(key) end
+        function A.Tick()
+            if not pending then return end
+            local now, world = readClock()
+            if not now or world ~= pending.world or now < pending.started then
+                revoke('Login clock unavailable. Please try again.', 'locked'); return
+            end
+            if now >= pending.deadline then
+                revoke('Request timed out. Please try again.', 'error')
+            end
+        end
+        function A.IsAuthorized()
+            if allowed and not restartRequired then return true end
+            local stored = loadSession()
+            if stored and not restartRequired then
+                allowed = true; expiresAt = stored.expiresAt; return true
+            end
+            return false
+        end
+        function A.Logout() clearSession(); revoke('Expired: signed out.', 'locked') end
+        function A.FailClosed(text, requiresRestart)
+            if requiresRestart == true then restartRequired = true end
+            revoke(text or 'Online access unavailable.', 'error')
+        end
+        function A.ReportClockTampering()
+            if localExpiry then localExpiry.MarkTampered() end
+            revoke("Don't be over smart", 'tampered')
+        end
+        function A.Bind(onStart, onStop)
+            if type(onStart) ~= 'function' or type(onStop) ~= 'function' then
+                return false, 'START_AND_STOP_REQUIRED'
+            end
+            if startFn and (startFn ~= onStart or stopFn ~= onStop) then return false, 'ALREADY_BOUND' end
+            startFn, stopFn = onStart, onStop
+            if A.IsAuthorized() then return startPayload() end
+            return true
+        end
+        function A.Unbind()
+            revoke('Offline script disconnected.', 'locked')
+            startFn, stopFn = nil, nil
+        end
+        function A.GetRemainingSeconds() return nil end
+        function A.GetState()
+            local authorized = A.IsAuthorized()
+            local sample, age
+            if authorized and lastRequestLatencyMs ~= nil then
+                local now, world = readClock()
+                if now and world == lastResponseWorld and now >= lastResponseTime then
+                    sample, age = lastRequestLatencyMs, now - lastResponseTime
+                end
+            end
+            return {
+                phase = phase, message = message, authorized = authorized,
+                sessionAuthorized = authorized, expiresAt = expiresAt,
+                accessPolicy = "game_session", expiryCheckPolicy = "login_only",
+                periodicRecheck = false, pending = pending ~= nil,
+                linked = startFn ~= nil, restartRequired = restartRequired == true,
+                lastRequestLatencyMs = sample, lastRequestLatencyAgeSeconds = age,
+                latencyScope = "license_http_round_trip"
+            }
+        end
+        return A
+    end
+
+    local Core = {Primitives = Primitives, createExpiry = CreateLocalExpiry}
+    function Core.new(config, dependencies)
+        assert(type(config) == 'table' and type(dependencies) == 'table',
+            'License configuration and dependencies required')
+        local deps = {}
+        for key, value in pairs(dependencies) do deps[key] = value end
+        if deps.localExpiry == nil then deps.localExpiry = CreateLocalExpiry(config) end
+        return CreateAuth(Primitives, config, deps)
+    end
+    return Core
+end)()
+
+    local UI={Version="LunarLoginModule.Murshid.1"}
+    local function member(o,k)
+        if o==nil then return nil end
+        local ok,v=pcall(function() return o[k] end);if ok then return v end
+    end
+    local function valid(o)
+        if o==nil then return false end
+        local ok,v=pcall(slua.isValid,o);return ok and v==true
+    end
+    local vectorClass=rawget(_G,"FVector2D") or import("Vector2D")
+    local colorClass=rawget(_G,"FLinearColor") or import("LinearColor")
+    local anchorClass=rawget(_G,"Anchors")
+    local importedAnchorClass
+    pcall(function() importedAnchorClass=import("Anchors") end)
+    local function vector(x,y) return vectorClass(x,y) end
+    local function color(r,g,b,a)
+        local function linear(v) v=v/255;if v<=0.04045 then return v/12.92 end;return ((v+0.055)/1.055)^2.4 end
+        return colorClass(linear(r),linear(g),linear(b),a or 1)
+    end
+    local function visibility(w,v)
+        local fn=member(w,"SetWidgetVisibility") or member(w,"SetVisibility")
+        assert(type(fn)=="function","UI_VISIBILITY_UNAVAILABLE");fn(w,v)
+    end
+    local function parent()
+        local ok,t=pcall(require,"GameLua.Mod.BaseMod.Common.UI.InGameUITools")
+        if not ok or type(member(t,"GetMainControlBaseUI"))~="function" then return end
+        local found,root=pcall(t.GetMainControlBaseUI);if not found or not valid(root) then return end
+        local p=member(root,"CanvasPanel_0");if not valid(p) then p=member(root,"CanvasPanel_42") end
+        if valid(p) then return p end
+    end
+    local function destroy(d)
+        if not d then return end
+        d.Visible=false
+        if d.Event and d.Handle~=nil then pcall(function() d.Event:Remove(d.Handle) end) end
+        if valid(d.Container) then pcall(function() d.Container:RemoveFromParent() end) end
+        d.Submit=nil;d.Event=nil;d.Handle=nil;d.Container=nil;d.Parent=nil
+        d.Input=nil;d.Button=nil;d.Status=nil;d.Title=nil;d.Detail=nil;d.Hint=nil;d.Design=nil;d.Cache=nil
+    end
+    -- Approved red/green frame, dark red/green heading, light full-color body.
+    -- All gradient/angle/brush work happens at construction. No animation,
+    -- background asset, network dependency, text outline or external backdrop.
+    function UI.Build(kind,key,status,submit)
+        local p=parent();if not p then return nil,"UI_NOT_READY" end
+        local enums=UEnums.ESlateVisibility
+        local passive=enums.SelfHitTestInvisible
+        if enums.Visible==nil or passive==nil then return nil,"UI_ENUM_UNAVAILABLE" end
+        local welcome=kind=="welcome"
+        local W,H=welcome and 600 or 500,welcome and 276 or 248
+        local scale=welcome and 0.8 or 1
+        pcall(function()
+            local v=p:GetCachedGeometry():GetLocalSize()
+            if v.X>24 and v.Y>24 then scale=math.min(scale,(v.X-24)/W,(v.Y-24)/H) end
+        end)
+        local d={Parent=p,Visible=false,Submit=submit,Scale=scale}
+        local ok,buildError=pcall(function()
+            local function make(class,outer)
+                local w=CGame:NewObjectFromPath("/Script/UMG."..class,outer)
+                assert(valid(w),"UI_WIDGET_UNAVAILABLE");return w
+            end
+            d.Container=make("CanvasPanel",p)
+            -- Validate and attach the empty root before allocating static artwork.
+            -- Some SLua CanvasSlot bindings expose SetAnchors but not GetAnchors.
+            local slot=p:AddChildToCanvas(d.Container)
+            assert(slot~=nil,"UI_CANVAS_SLOT_UNAVAILABLE")
+            local got,anchors=pcall(function() return anchorClass() end)
+            if not got or not anchors then got,anchors=pcall(function() return importedAnchorClass() end) end
+            if not got or not anchors then
+                local getter=member(slot,"GetAnchors")
+                if type(getter)=="function" then got,anchors=pcall(getter,slot) end
+            end
+            assert(got and anchors,"UI_ANCHORS_UNAVAILABLE")
+            anchors.Minimum=vector(.5,.5);anchors.Maximum=vector(.5,.5)
+            slot:SetAutoSize(false);slot:SetSize(vector(W,H));slot:SetZOrder(9200)
+            slot:SetAnchors(anchors);slot:SetAlignment(vector(.5,.5));slot:SetPosition(vector(0,0))
+            local pivot=member(d.Container,"SetRenderTransformPivot")
+            if type(pivot)=="function" then pcall(pivot,d.Container,vector(.5,.5)) end
+            local resize=member(d.Container,"SetRenderScale")
+            if type(resize)=="function" then pcall(resize,d.Container,vector(scale,scale)) end
+            visibility(d.Container,passive)
+            local design=make("CanvasPanel",d.Container);d.Design=design
+            local artRoot=design
+            local canCache,cache=pcall(make,"InvalidationBox",d.Container)
+            if canCache and valid(cache) and type(member(cache,"SetCanCache"))=="function" then
+                local attached=pcall(function()cache:AddChild(design);cache:SetCanCache(true);visibility(cache,passive)end)
+                if attached then artRoot=cache;d.Cache=cache end
+            end
+            local artSlot=d.Container:AddChildToCanvas(artRoot)
+            artSlot:SetAutoSize(false);artSlot:SetPosition(vector(0,0));artSlot:SetSize(vector(W,H));artSlot:SetZOrder(1)
+            visibility(design,passive)
+            local function add(w,x,y,ww,hh,z,dynamic)
+                local slot=(dynamic and d.Container or design):AddChildToCanvas(w)
+                slot:SetAutoSize(false);slot:SetPosition(vector(x,y));slot:SetSize(vector(ww,hh));slot:SetZOrder(z)
+                return slot
+            end
+            -- Flatten static gradient rectangles before applying 50% alpha.
+            -- Overlapping body/badge/button fills must not accumulate opacity.
+            local artwork={}
+            local function drawRect(x,y,ww,hh,c,z,opacity)
+                local w=make("Border",d.Container)
+                w:SetBrushColor(colorClass(c.R,c.G,c.B,opacity or .5));visibility(w,passive)
+                add(w,x,y,ww,hh,z);return w
+            end
+            local function rect(x,y,ww,hh,c,z,opacity)
+                artwork[#artwork+1]={X=x,Y=y,W=ww,H=hh,C=c,Z=z,A=opacity or .5,Order=#artwork+1}
+            end
+            local function renderArt()
+                table.sort(artwork,function(a,b)
+                    if a.Z==b.Z then return a.Order>b.Order end
+                    return a.Z>b.Z
+                end)
+                local covered={}
+                local function put(out,x,y,w,h)
+                    if w>.00001 and h>.00001 then out[#out+1]={X=x,Y=y,W=w,H=h} end
+                end
+                for _,shape in ipairs(artwork) do
+                    local pieces={{X=shape.X,Y=shape.Y,W=shape.W,H=shape.H}}
+                    for _,cover in ipairs(covered) do
+                        local nextPieces={}
+                        for _,piece in ipairs(pieces) do
+                            local x1=math.max(piece.X,cover.X);local y1=math.max(piece.Y,cover.Y)
+                            local x2=math.min(piece.X+piece.W,cover.X+cover.W)
+                            local y2=math.min(piece.Y+piece.H,cover.Y+cover.H)
+                            if x2<=x1 or y2<=y1 then nextPieces[#nextPieces+1]=piece
+                            else
+                                put(nextPieces,piece.X,piece.Y,piece.W,y1-piece.Y)
+                                put(nextPieces,piece.X,y2,piece.W,piece.Y+piece.H-y2)
+                                put(nextPieces,piece.X,y1,x1-piece.X,y2-y1)
+                                put(nextPieces,x2,y1,piece.X+piece.W-x2,y2-y1)
+                            end
+                        end
+                        pieces=nextPieces;if #pieces==0 then break end
+                    end
+                    -- Coalesce adjacent pieces of the same solid gradient strip.
+                    -- This keeps clipping from multiplying native UI widgets.
+                    local changed=true
+                    while changed do
+                        changed=false
+                        for i=1,#pieces do
+                            local a=pieces[i]
+                            for j=i+1,#pieces do
+                                local b=pieces[j]
+                                local vertical=math.abs(a.X-b.X)<.00001 and math.abs(a.W-b.W)<.00001
+                                    and (math.abs(a.Y+a.H-b.Y)<.00001 or math.abs(b.Y+b.H-a.Y)<.00001)
+                                local horizontal=math.abs(a.Y-b.Y)<.00001 and math.abs(a.H-b.H)<.00001
+                                    and (math.abs(a.X+a.W-b.X)<.00001 or math.abs(b.X+b.W-a.X)<.00001)
+                                if vertical or horizontal then
+                                    local x,y=math.min(a.X,b.X),math.min(a.Y,b.Y)
+                                    a.W=math.max(a.X+a.W,b.X+b.W)-x
+                                    a.H=math.max(a.Y+a.H,b.Y+b.H)-y;a.X=x;a.Y=y
+                                    table.remove(pieces,j);changed=true;break
+                                end
+                            end
+                            if changed then break end
+                        end
+                    end
+                    for _,piece in ipairs(pieces) do
+                        drawRect(piece.X,piece.Y,piece.W,piece.H,shape.C,shape.Z,shape.A)
+                    end
+                    covered[#covered+1]=shape
+                end
+                artwork=nil
+            end
+            local function sample(stops,t,opacity)
+                t=math.max(0,math.min(1,t));local a,b,u
+                if t<=.5 then a,b,u=stops[1],stops[2],t*2 else a,b,u=stops[2],stops[3],(t-.5)*2 end
+                return color(a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u,a[3]+(b[3]-a[3])*u,opacity)
+            end
+            local function panel(x,y,ww,hh,cut,stops,z,columns,opacity)
+                columns=math.min(columns,12) -- Static cached gradient geometry.
+                for i=0,columns-1 do
+                    local a=ww*i/columns;local b=ww*(i+1)/columns
+                    local inset=math.max(0,cut-math.min(a,ww-b))
+                    rect(x+a,y+inset,b-a,hh-inset*2,sample(stops,(i+.5)/columns,opacity),z,opacity)
+                end
+            end
+            local function rail(x,y,ww,hh,stops,z,columns)
+                columns=math.min(columns,12)
+                for i=0,columns-1 do
+                    rect(x+ww*i/columns,y,ww/columns,hh,sample(stops,(i+.5)/columns),z)
+                end
+            end
+            local function line(ax,ay,bx,by,th,c,z)
+                local dx,dy=bx-ax,by-ay
+                local len=math.sqrt(dx*dx+dy*dy)
+                if len<=0 then return end
+                local angle
+                if dx==0 then angle=dy>=0 and 90 or -90
+                else angle=math.atan(dy/dx)*180/math.pi;if dx<0 then angle=angle+180 end end
+                local w=drawRect((ax+bx-len)/2,(ay+by-th)/2,len,th,c,z,z>=7 and 1 or .5)
+                w:SetRenderTransformPivot(vector(.5,.5));w:SetRenderAngle(angle)
+            end
+            local slate=import("SlateColor")
+            local fontObject
+            if slua and type(slua.loadObject)=="function" then
+                local loaded,obj=pcall(slua.loadObject,"/Engine/EngineFonts/Roboto.Roboto")
+                if loaded and valid(obj) then fontObject=obj end
+            end
+            local function style(w,size,c,bold)
+                local font=member(w,"Font")
+                if font then
+                    if type(font)=="table" then local copy={};for k,v in pairs(font) do copy[k]=v end;font=copy end
+                    font.Size=size
+                    if fontObject then font.FontObject=fontObject;font.TypefaceFontName=bold and "Bold" or "Regular" end
+                    if font.OutlineSettings then
+                        local outline=font.OutlineSettings
+                        if type(outline)=="table" then local copy={};for k,v in pairs(outline) do copy[k]=v end;outline=copy end
+                        outline.OutlineSize=0;font.OutlineSettings=outline
+                    end
+                    w:SetFont(font)
+                end
+                w:SetColorAndOpacity(slate(c))
+                pcall(function()w:SetShadowOffset(vector(0,0));w:SetShadowColorAndOpacity(color(0,0,0,0))end)
+                pcall(function() w:SetAutoWrapText(true) end)
+            end
+            local function text(value,x,y,ww,hh,size,c,z,bold,center,dynamic)
+                local w=make("TextBlock",d.Container);w:SetText(value);style(w,size,c,bold)
+                visibility(w,passive);add(w,x,y,ww,hh,z,dynamic)
+                if center then pcall(function() w:SetJustification(1) end) end
+                return w
+            end
+            local frame={{4,13,29},{8,68,146},{14,126,255}}
+            local bright={{57,104,163},{111,181,255},{195,225,255}}
+            local edge={{1,5,13},{5,22,49},{8,58,122}}
+            local body={{3,7,15},{7,20,39},{9,38,76}}
+            local header={{2,7,17},{6,27,61},{9,72,157}}
+            local gold={{13,47,92},{77,161,255},{13,88,181}}
+            local white=color(255,255,255)
+            local forest=color(231,243,255)
+            local burgundy=color(192,221,255)
+            -- Perimeter only: an opaque full-panel backing would destroy
+            -- the requested body transparency even with alpha on the body.
+            panel(6,6,W-12,H-12,10,body,2,24,.5)
+            rail(13,0,W-26,6,frame,3,24)
+            rail(13,H-6,W-26,6,frame,3,24)
+            rect(0,13,6,H-26,color(4,13,29),3)
+            rect(W-6,13,6,H-26,color(14,126,255),3)
+            rail(13,1,W-26,1.5,bright,3,24)
+            rail(13,H-3,W-26,1.5,edge,3,24)
+            rect(1,13,1.5,H-26,color(68,134,211),3)
+            rect(W-3,13,1.5,H-26,color(180,222,255),3)
+            for _,s in ipairs({{1,13,13,1},{1,H-13,13,H-1}}) do line(s[1],s[2],s[3],s[4],2,color(91,159,239),3) end
+            for _,s in ipairs({{W-13,1,W-1,13},{W-13,H-1,W-1,H-13}}) do line(s[1],s[2],s[3],s[4],2,color(154,211,255),3) end
+            panel(10,10,W-20,65,16,gold,4,24,1)
+            panel(13,13,W-26,59,14,header,5,32,1)
+            if welcome then
+                d.Title=text("Welcome to @Masterpiece2025 Lua mod",24,22,W-48,42,19,white,7,true,true)
+                local pw=math.min(340,W-72);local px=(W-pw)/2
+                panel(px,99,pw,51,12,gold,4,16)
+                panel(px+3,102,pw-6,45,10,{{4,19,42},{13,68,132},{4,28,64}},5,20)
+                d.Detail=text("Kill limit 8-10",px+16,109,pw-32,34,23,white,7,true,true)
+                d.Hint=text("Play smart and avoid report",30,165,W-60,32,17,forest,7,true,true)
+            else
+                d.Title=text("MASTERAHSANYT",22,15,W-44,31,24,white,7,true,true)
+                text("LOGIN",22,45,W-44,21,12,white,7,true,true)
+                line(W/2-118,56,W/2-47,56,1,color(224,242,255),7)
+                line(W/2+47,56,W/2+118,56,1,color(224,242,255),7)
+                text("LOGIN KEY",22,82,W-44,20,13,burgundy,7,true,false)
+                rail(27,104,W-54,2,gold,4,24)
+                rail(27,143,W-54,2,gold,4,24)
+                rect(20,111,2,27,color(13,47,92),4)
+                rect(W-22,111,2,27,color(13,88,181),4)
+                line(20,111,27,104,2,color(77,161,255),4)
+                line(W-27,104,W-20,111,2,color(77,161,255),4)
+                line(20,138,27,145,2,color(77,161,255),4)
+                line(W-27,145,W-20,138,2,color(77,161,255),4)
+                d.Input=make("EditableTextBox",d.Container)
+                d.Input:SetText(key or "")
+                -- Input-specific native style; TextBlock-only methods stay unused.
+                local fg=forest;local bg=color(3,7,15,0)
+                local inputStyle=member(d.Input,"WidgetStyle")
+                if inputStyle then
+                    if type(inputStyle)=="table" then local copy={};for k,v in pairs(inputStyle) do copy[k]=v end;inputStyle=copy end
+                    local inputFont=member(inputStyle,"Font")
+                    if inputFont then
+                        if type(inputFont)=="table" then local copy={};for k,v in pairs(inputFont) do copy[k]=v end;inputFont=copy end
+                        inputFont.Size=17
+                        if fontObject then inputFont.FontObject=fontObject;inputFont.TypefaceFontName="Regular" end
+                        inputStyle.Font=inputFont
+                    end
+                    inputStyle.ForegroundColor=slate(fg);inputStyle.ReadOnlyForegroundColor=slate(fg)
+                    for _,name in ipairs({"BackgroundImageNormal","BackgroundImageHovered","BackgroundImageFocused","BackgroundImageReadOnly"}) do
+                        local brush=member(inputStyle,name)
+                        if brush then
+                            if type(brush)=="table" then local copy={};for k,v in pairs(brush) do copy[k]=v end;brush=copy end
+                            brush.TintColor=slate(bg);inputStyle[name]=brush
+                        end
+                    end
+                    d.Input.WidgetStyle=inputStyle
+                else
+                    local inputFont=member(d.Input,"Font")
+                    if inputFont then
+                        if type(inputFont)=="table" then local copy={};for k,v in pairs(inputFont) do copy[k]=v end;inputFont=copy end
+                        inputFont.Size=17;d.Input.Font=inputFont
+                    end
+                    d.Input.ForegroundColor=fg;d.Input.BackgroundColor=bg
+                end
+                local setForeground=member(d.Input,"SetForegroundColor")
+                if type(setForeground)=="function" then setForeground(d.Input,fg) end
+                pcall(function() d.Input:SetHintText("Enter your key") end)
+                visibility(d.Input,enums.Visible);add(d.Input,23,107,W-46,35,8,true)
+                d.Hint=text("Your key is saved automatically",22,149,W-44,19,11,burgundy,7,false,false)
+                d.Status=text(status or "Enter your key",22,170,W-44,23,11,burgundy,8,false,false,true)
+            end
+            local button=make("Button",d.Container);d.Button=button
+            local by=welcome and 212 or 201;local bh=welcome and 42 or 34
+            local bw=welcome and 202 or 190;local bx=(W-bw)/2
+            panel(bx-4,by-3,bw+8,bh+6,9,gold,4,16)
+            panel(bx,by,bw,bh,8,{{5,40,92},{10,93,192},{4,46,108}},5,16)
+            pcall(function() button:SetBackgroundColor(color(255,255,255,0)) end)
+            visibility(button,enums.Visible)
+            local label=make("TextBlock",button);label:SetText("OK");style(label,17,white,true);visibility(label,passive)
+            local labelSlot=button:AddChild(label)
+            pcall(function() labelSlot:SetHorizontalAlignment(2);labelSlot:SetVerticalAlignment(2) end)
+            add(button,bx,by,bw,bh,9,true)
+            d.Event=button.OnClicked
+            d.Handle=d.Event:Add(function()
+                if not d.Visible or d.Busy then return end
+                if welcome then
+                    destroy(d);d.Dismissed=true
+                    local l=_G.LunarLoginRuntime;if l and l.WelcomeUI==d then l.WelcomeUI=nil;l.Dismissed=true;l.NeedsUpdate=false end
+                    return
+                end
+                local okRead,k=pcall(function() return d.Input:GetText() end)
+                if not okRead or type(k)~="string" then return end
+                k=k:match("^%s*(.-)%s*$")
+                if #k==0 or #k>512 then d.Status:SetText("Enter a valid key");return end
+                if d.Submit then d.Submit(k) end
+            end)
+            renderArt()
+
+        end)
+        if not ok then UI.LastBuildError=tostring(buildError);destroy(d);return nil,"UI_BUILD_UNAVAILABLE" end
+        UI.LastBuildError=nil
+        d.Visible=true;return d
+    end
+    _G.LunarUIAssetCache=nil
+    -- Hot UI upgrades retain the existing verified or pending license session.
+    local existing=_G.LunarLoginRuntime
+    if existing and existing.UIFactory and existing.UIFactory.Version~=UI.Version
+        and existing.Scope==MasterLicenseCore.Primitives.md5(MasterLicenseConfig.url.."\0"..MasterLicenseConfig.game.."\0"..MasterLicenseConfig.secret) then
+        local visibleWelcome=existing.WelcomeUI and existing.WelcomeUI.Visible
+        if existing.DestroyUI then existing.DestroyUI() end
+        existing.UIFactory.Build=UI.Build;existing.UIFactory.Version=UI.Version
+        if visibleWelcome then existing.WelcomeShown=false end
+        existing.NeedsUpdate=true
+    end
+    local function hex(s) return (s:gsub('.',function(c) return string.format('%02x',string.byte(c)) end)) end
+    local function unhex(s)
+        if type(s)~="string" or #s>1024 or #s%2~=0 or s:find('[^%x]') then return nil end
+        return (s:gsub('..',function(v) return string.char(tonumber(v,16)) end))
+    end
+    local current=_G.LunarLoginRuntime
+    -- Existing runtime survives character recreation and source reload in this process.
+    local expectedScope=MasterLicenseCore.Primitives.md5(MasterLicenseConfig.url.."\0"..MasterLicenseConfig.game.."\0"..MasterLicenseConfig.secret)
+    if not current or current.Scope~=expectedScope then
+        if current and current.DestroyUI then current.DestroyUI() end
+        local L={Authorized=false,Pending=false,NeedsUpdate=true,WelcomeShown=false,
+            Key="",Seed="",Scope=expectedScope,StorageVersion=1,Status="Enter your key",Diagnostics={HTTP=0,DeviceReads=0}}
+        _G.LunarLoginRuntime=L
+        L.UIFactory=UI
+        -- Identity is pinned independently of the feature-settings location.
+        -- All IO is bounded and happens at startup/login, or a delayed save retry.
+        local paths=loginStoragePaths()
+        for i,path in ipairs(paths) do paths[i]=path:gsub("MASTERPIECE_UMG_ESP_settings.lua$","MASTERAHSAN_LOGIN_MURSHID_V7_settings.lua") end
+        local function loginPath(featurePath)
+            if type(featurePath)~="string" then return nil end
+            local prefix=featurePath:match("^(.*[/\\])[^/\\]+$")
+            return (prefix or "").."MASTERAHSAN_LOGIN_MURSHID_V7_settings.lua"
+        end
+        local function identityPath(path)
+            return path:gsub("MASTERAHSAN_LOGIN_MURSHID_V7_settings%.lua$","MASTERAHSAN_DEVICE_MURSHID_V1_settings.lua")
+        end
+        local function digest(key,seed)
+            return MasterLicenseCore.Primitives.md5("LUNAR-DEVICE-1\0"..L.Scope.."\0"..key.."\0"..seed)
+        end
+        local function readRecord(path,identity)
+            if not (io and type(io.open)=="function") then return nil,"unreadable" end
+            local ok,file,reason,code=pcall(io.open,path,"r")
+            if not ok then return nil,"unreadable" end
+            if not file then
+                local text=type(reason)=="string" and reason:lower() or ""
+                if reason==nil or code==2 or text:find("no such file",1,true)
+                    or text:find("not found",1,true) or text:find("does not exist",1,true) then
+                    return nil,"missing"
+                end
+                return nil,"unreadable"
+            end
+            local good,data=pcall(function() return file:read(4097) end)
+            pcall(function() file:close() end)
+            if not good or type(data)~="string" then return nil,"unreadable" end
+            if #data>4096 then return nil,"invalid" end
+            local scope=data:match('%f[%w_]Scope%s*=%s*"([%x]+)"')
+            if scope and scope~=L.Scope then return nil,"other_scope" end
+            if scope~=L.Scope then return nil,"invalid" end
+            local key=unhex(data:match('%f[%w_]KeyHex%s*=%s*"([^"]*)"'))
+            local seed=unhex(data:match('%f[%w_]SeedHex%s*=%s*"([^"]*)"'))
+            if key==nil or seed==nil or #seed==0 or #seed>512 then return nil,"invalid" end
+            local check=data:match('%f[%w_]Check%s*=%s*"([%x]+)"')
+            local version=data:match('%f[%w_]Version%s*=%s*(%d+)')
+            if identity or check or version then
+                if version~="1" or check~=digest(key,seed) then return nil,"invalid" end
+            end
+            return {Key=key,Seed=seed,Path=path,Identity=identity,Checked=version=="1"},"valid"
+        end
+        local function candidates()
+            local list,seen={},{}
+            local function add(path)
+                if type(path)=="string" and not seen[path] then seen[path]=true;list[#list+1]=path end
+            end
+            add(L.Path);add(L.PreferredPath)
+            for _,path in ipairs(paths) do add(path) end
+            return list
+        end
+        local function recover()
+            if L.IdentityPinned then return true end
+            local identities,legacy,issues={},{},{}
+            local function collect(base,path,identity)
+                local record,state=readRecord(path,identity)
+                if record then
+                    record.Base=base
+                    local list=identity and identities or legacy;list[#list+1]=record
+                elseif state=="invalid" or (state=="unreadable" and base==L.PreferredPath) then
+                    issues[#issues+1]=state
+                end
+            end
+            for _,base in ipairs(candidates()) do
+                local device=identityPath(base)
+                collect(base,device,true);collect(base,device..".bak",true)
+                collect(base,base,false);collect(base,base..".bak",false)
+            end
+            local list=#identities>0 and identities or legacy
+            local first=list[1]
+            if first then
+                for _,record in ipairs(list) do
+                    if record.Seed~=first.Seed then
+                        L.IdentityError="DEVICE_CACHE_CONFLICT";L.Diagnostics.Identity="conflict";return false
+                    end
+                end
+                L.Seed=first.Seed;L.Key=first.Key;L.Path=first.Base
+                if L.Key=="" then
+                    for _,record in ipairs(list) do
+                        if record.Key~="" then L.Key=record.Key;break end
+                    end
+                end
+                -- A matching legacy copy can recover the key after a lost write.
+                if L.Key=="" then
+                    for _,record in ipairs(legacy) do
+                        if record.Seed==L.Seed and record.Key~="" then L.Key=record.Key;break end
+                    end
+                end
+                L.IdentityPinned=true;L.IdentityPersisted=true;L.HasIdentityRecord=first.Identity
+                L.IdentityError=nil;L.Dirty=true
+                L.Diagnostics.Identity=first.Identity and "restored" or "legacy_migration"
+                return true
+            end
+            if #issues>0 then
+                L.IdentityError="DEVICE_CACHE_RECOVERY_REQUIRED";L.Diagnostics.Identity="recovery_required";return false
+            end
+            L.IdentityError=nil;L.Diagnostics.Identity="new_install";return true
+        end
+        local function payload(key,seed)
+            return 'return { Version = 1, Scope = "'..L.Scope..'", KeyHex = "'..hex(key)
+                ..'", SeedHex = "'..hex(seed)..'", Check = "'..digest(key,seed)..'" }'
+        end
+        local function verifiedWrite(path,identity,key,seed,data)
+            local current,state=readRecord(path,identity)
+            if current and current.Checked and current.Seed==seed and current.Key==key then return true end
+            if state=="unreadable" or state=="other_scope" then return false end
+            if current and current.Seed~=seed and (identity or not L.HasIdentityRecord) then return false end
+            local ok=loginWriteSettings(path,data)
+            if not ok then return false end
+            local result=readRecord(path,identity)
+            return result~=nil and result.Checked and result.Seed==seed and result.Key==key
+        end
+        L.Save=function()
+            if L.Seed=="" or L.IdentityError then return false end
+            local key=L.AttemptKey or L.Key
+            local data=payload(key,L.Seed)
+            local preferred=candidates()
+            for _,base in ipairs(preferred) do
+                local device=identityPath(base)
+                local old,oldState=readRecord(base,false)
+                local current,currentState=readRecord(device,true)
+                -- Never fork around an unreadable/conflicting saved identity.
+                if oldState~="unreadable" and currentState~="unreadable"
+                    and oldState~="other_scope" and currentState~="other_scope"
+                    and (not old or old.Seed==L.Seed or L.HasIdentityRecord)
+                    and (not current or current.Seed==L.Seed) then
+                    local a=verifiedWrite(device,true,key,L.Seed,data)
+                    local b=verifiedWrite(device..".bak",true,key,L.Seed,data)
+                    local c=verifiedWrite(base,false,key,L.Seed,data)
+                    local d=verifiedWrite(base..".bak",false,key,L.Seed,data)
+                    if (a or b) and ((a and b) or c or d) then
+                        L.Path=base;L.Key=key;L.IdentityPinned=true;L.IdentityPersisted=true;L.HasIdentityRecord=true
+                        L.IdentityError=nil;L.Dirty=not (a and b and c and d)
+                        L.SaveRetryAt=L.Dirty and (os.time()+30) or nil
+                        L.SaveError=L.Dirty and "Device backup repair pending" or nil
+                        L.Diagnostics.Identity=L.Dirty and "backup_pending" or "saved"
+                        return true
+                    end
+                end
+            end
+            L.Dirty=true;L.SaveRetryAt=os.time()+30
+            L.SaveError="Device cache could not be verified";L.Diagnostics.Identity="save_failed"
+            return false
+        end
+        L.BindSettingsPath=function(featurePath)
+            L.PreferredPath=loginPath(featurePath)
+            -- Once recovered, neither the key nor seed is replaced by settings.
+            if not L.IdentityPinned then recover() end
+            if L.Seed~="" and not L.IdentityError and (L.Dirty or not L.IdentityPersisted) then L.Save() end
+        end
+        L.EnsureIdentity=function()
+            if not L.IdentityPinned then
+                L.Seed=""
+                assert(recover(),L.IdentityError or "DEVICE_CACHE_RECOVERY_REQUIRED")
+            end
+            if L.Seed=="" then
+                L.Diagnostics.DeviceReads=L.Diagnostics.DeviceReads+1
+                local id=Client.GetPhoneDeviceID()
+                assert(type(id)=="string" and #id>0 and #id<=512,"DEVICE_ID_UNAVAILABLE")
+                L.Seed=id
+            end
+            local saved=L.Save()
+            -- A readable previously stored identity stays usable on read-only
+            -- storage. Backup repair must not invent or force a new device ID.
+            assert(saved or L.IdentityPersisted,"DEVICE_CACHE_SAVE_FAILED")
+        end
+        recover()
+        L.DestroyUI=function() destroy(L.LoginUI);destroy(L.WelcomeUI);L.LoginUI=nil;L.WelcomeUI=nil end
+        local function wake()
+            if _G.MasterAhsanLogin and _G.MasterAhsanLogin._Wake then _G.MasterAhsanLogin._Wake() end
+        end
+        L.Core=MasterLicenseCore
+        L.Auth=MasterLicenseCore.new(MasterLicenseConfig,{
+            clock=function() local t=os.time();return t,L.Scope end,
+            wall=function() return os.time() end,
+            serial=function(key)
+                L.EnsureIdentity()
+                return MasterLicenseCore.Primitives.name_uuid('MASTER-LUA-V1\0'..key..'\0'..L.Seed)
+            end,
+            decode=function(raw) local json=require("common.json_util");return json.decode(raw) end,
+            post=function(url,headers,body,callback,timeout)
+                local http=ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+                L.Diagnostics.HTTP=L.Diagnostics.HTTP+1
+                return http:Post(url,headers,body,nil,callback,timeout)
+            end,
+            status=function(message,phase)
+                L.Status=message;L.Pending=phase=="pending"
+                if phase=="active" then
+                    L.Authorized=true;L.Key=L.AttemptKey or L.Key;L.Save()
+                    destroy(L.LoginUI);L.LoginUI=nil
+                else L.Authorized=false end
+                L.NeedsUpdate=true
+                local d=L.LoginUI
+                if d then
+                    if d.StatusText~=message then d.Status:SetText(message);d.StatusText=message end
+                    if d.Busy~=L.Pending then
+                        d.Busy=L.Pending
+                        pcall(function() d.Input:SetIsEnabled(not L.Pending);d.Button:SetIsEnabled(not L.Pending) end)
+                    end
+                end
+                wake()
+            end
+        })
+        L.Authorized=L.Auth.IsAuthorized()
+        L.Login=function(key)
+            if L.Authorized or L.Pending then return false end
+            L.AttemptKey=type(key)=="string" and key:match("^%s*(.-)%s*$") or ""
+            local ok,result=pcall(L.Auth.Login,L.AttemptKey)
+            if not ok then L.Status="Login could not start";L.Pending=false;L.NeedsUpdate=true;wake();return false end
+            return result
+        end
+        L.Logout=function()
+            L.Auth.Logout();L.Authorized=false;L.DestroyUI();L.NeedsUpdate=true;wake()
+        end
+        L.Update=function()
+            if L.Pending then L.Auth.Tick() end
+            if L.Dirty and (not L.SaveRetryAt or os.time()>=L.SaveRetryAt or os.time()<L.SaveRetryAt-30) then L.Save() end
+            if L.Authorized then
+                if not L.WelcomeShown then
+                    local d=UI.Build("welcome")
+                    if d then L.WelcomeUI=d;L.WelcomeShown=true end
+                end
+                L.NeedsUpdate=not L.WelcomeShown or L.Dirty
+                return
+            end
+            local p=parent()
+            if L.LoginUI and (not valid(L.LoginUI.Container) or p~=L.LoginUI.Parent) then destroy(L.LoginUI);L.LoginUI=nil end
+            if not L.LoginUI then
+                local d=UI.Build("login",L.Key,L.Status,L.Login)
+                if d then
+                    d.Busy=L.Pending;d.StatusText=L.Status;L.LoginUI=d
+                    pcall(function() d.Input:SetIsEnabled(not L.Pending);d.Button:SetIsEnabled(not L.Pending) end)
+                end
+            end
+            L.NeedsUpdate=true -- Half-second retry/readiness while locked only.
+        end
+    end
+    _G.MasterLicenseLogin=function(key) return _G.LunarLoginRuntime.Login(key) end
+    _G.MasterLicenseLogout=function() return _G.LunarLoginRuntime.Logout() end
+    _G.MasterLicenseStatus=function()
+        local l=_G.LunarLoginRuntime
+        return {authorized=l.Authorized,pending=l.Pending,message=l.Status,
+            periodicRecheck=false,expiryCheckPolicy="login_only",saveOK=not l.Dirty,identityState=l.Diagnostics.Identity}
+    end
+
+end
+
+
+local L=_G.LunarLoginRuntime
+API.Runtime=L
+local ticker
+pcall(function() ticker=require("common.time_ticker") end)
+local function dispatch()
+    local authorized=L.Authorized==true
+    for _,binding in pairs(API.Subscribers) do
+        if binding.Last~=authorized then
+            binding.Last=authorized
+            local callback
+            if authorized then callback=binding.OnAuthorized else callback=binding.OnLocked end
+            if callback then
+                local ok,why=pcall(callback,L.Status)
+                if not ok then API.Errors=API.Errors+1;API.LastError=tostring(why) end
+            end
+        end
+    end
+end
+local function update()
+    if not API.Started or API.Stopped then return end
+    local ok,why=pcall(L.Update)
+    if not ok then API.Errors=API.Errors+1;API.LastError=tostring(why) end
+    dispatch()
+end
+local schedule
+schedule=function(delay)
+    if API.Stopped or not API.Started or API.PendingTimer then return end
+    if not ticker or type(ticker.AddTimerOnce)~="function" then API.LastError="TIMER_UNAVAILABLE";return end
+    API.PendingTimer=true
+    local ok,why=pcall(ticker.AddTimerOnce,delay,function()
+        if API.Stopped or _G.MasterAhsanLogin~=API then return end
+        API.PendingTimer=false;update()
+        if L.NeedsUpdate or L.Pending or L.Dirty then schedule(0.5) end
+    end)
+    if not ok then API.PendingTimer=false;API.Errors=API.Errors+1;API.LastError=tostring(why) end
+end
+API._Wake=function()
+    if API.Started and not API.Stopped then schedule(0.01) end
+end
+function API.Start(options)
+    if API.Stopped then return false,"MODULE_STOPPED" end
+    options=options or {}
+    if options.settingsPath then L.BindSettingsPath(options.settingsPath)
+    elseif not API.StorageLocated then
+        API.StorageLocated=true
+        for _,suffix in ipairs({"MASTERAHSAN_FEATURES_V3_settings.lua","MASTERPIECE_UMG_ESP_settings.lua"}) do
+            for _,path in ipairs(loginStoragePaths()) do
+                path=path:gsub("MASTERPIECE_UMG_ESP_settings%.lua$",suffix)
+                local ok,file=pcall(function()return io.open(path,"r")end)
+                if ok and file then
+                    local good,first=pcall(function()return file:read(1)end)
+                    pcall(function()file:close()end)
+                    if good and type(first)=="string" and first~="" then API.StoragePath=path;break end
+                end
+            end
+            if API.StoragePath then break end
+        end
+        if API.StoragePath then L.BindSettingsPath(API.StoragePath) end
+    end
+    API.Started=true;L.NeedsUpdate=true
+    if options.onAuthorized or options.onLocked then API.Bind(options.onAuthorized,options.onLocked) end
+    update();schedule(0.01)
+    return true
+end
+function API.Bind(onAuthorized,onLocked)
+    assert(type(onAuthorized)=="function" or type(onLocked)=="function","CALLBACK_REQUIRED")
+    local handle={OnAuthorized=onAuthorized,OnLocked=onLocked,Last=nil}
+    API.Subscribers[handle]=handle
+    if API.Started then dispatch() end
+    return function() API.Subscribers[handle]=nil end
+end
+function API.IsAuthorized() return not API.Stopped and L.Authorized==true end
+function API.Login(key)
+    if not API.Started then API.Start() end
+    if API.Stopped then return false end
+    local result=L.Login(key);API._Wake();return result
+end
+function API.Logout()
+    if API.Stopped then return end
+    L.Logout();dispatch();API._Wake()
+end
+function API.Status()
+    return {authorized=API.IsAuthorized(),pending=L.Pending,message=L.Status,
+        errors=API.Errors,lastError=API.LastError,endpoint="https://ios.murshid-loader.shop/connect"}
+end
+function API.Update() update() end
+function API.Stop()
+    if API.Stopped then return end
+    -- Stop revokes the bound host before detaching its UI/timer. Existing device
+    -- records remain untouched so the next load can recover the same serial.
+    L.Logout();dispatch();API.Stopped=true;API.Started=false;L.DestroyUI()
+    API.Subscribers={}
+end
+
+-- Apply to a host-owned feature callback. This never changes its game class.
+function API.Guard(callback)
+    assert(type(callback)=="function","CALLBACK_REQUIRED")
+    return function(...)
+        if not API.IsAuthorized() then return nil,"LOGIN_REQUIRED" end
+        return callback(...)
+    end
+end
+
+-- Integrated host bootstrap: show authentication UI before host UI startup.
+API.Start()
+local UX_LOGIN_API = API
+
+
+-- ============================================================================
+-- Original main Lua script follows; authentication module is initialized above.
+-- ============================================================================
+
 -- Lunar V9.6.5: confirmed-death history prevents off-screen corpse rediscovery.
 -- 2026-10-10. Restart the game before testing; an old process may retain old hooks.
 -- Native game settings revision for UXOfficial by Lunar, 2026-10-07
@@ -1795,6 +3008,7 @@ do
         return state.Ready
     end
     g_UXOfficial_EnsureHackMenu = function()
+        if not (_G.MasterAhsanLogin and _G.MasterAhsanLogin.IsAuthorized and _G.MasterAhsanLogin.IsAuthorized()) then return false end
         local state = runtime()
         state.Ensure = g_UXOfficial_EnsureHackMenu
         if state.Initializing then return false end
@@ -7744,1211 +8958,6 @@ do
         return false
     end
 end
--- Standalone Murshid login/key module for the supplied PUBG/SLua runtime.
--- require("MurshidLogin") returns its API; Start() opens key UI.
-local existing=_G.MasterAhsanLogin
-if existing and existing.Version=="MasterAhsanLogin.Murshid.1" and not existing.Stopped then return existing end
-if existing and existing.Stop then pcall(existing.Stop) end
-if _G.LunarLoginRuntime and _G.LunarLoginRuntime.DestroyUI then pcall(_G.LunarLoginRuntime.DestroyUI) end
-_G.LunarLoginRuntime=nil
-local API={Version="MasterAhsanLogin.Murshid.1",Started=false,Stopped=false,PendingTimer=false,Subscribers={},Errors=0}
-_G.MasterAhsanLogin=API
-local loginStorageFilename = "MASTERPIECE_UMG_ESP_settings.lua"
-local function loginStoragePaths()
-    local paths = {
-        "//storage/emulated/0/Android/data/com.tencent.ig/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
-        "//storage/emulated/0/Android/data/com.vng.pubgmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
-        "//storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
-        "//storage/emulated/0/Android/data/com.rekoo.pubgm/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
-        "//storage/emulated/0/Android/data/com.pubg.imobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
-        "Documents/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
-        "ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
-        loginStorageFilename
-    }
-    local home=nil
-    pcall(function() if os and os.getenv then home=os.getenv("HOME") end end)
-    if type(home)=="string" and home~="" then
-        table.insert(paths,1,home.."/Documents/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename)
-    end
-    return paths
-end
--- Replace the SaveGames file only after write/flush/close succeed where Lua
--- exposes rename. A failed temporary write keeps the last saved file intact.
-local function loginWriteSettings(path,payload)
-    local atomic=os and type(os.rename)=="function"
-    local target=atomic and path..".tmp" or path
-    local opened,file=pcall(io.open,target,"w")
-    if not opened or not file then return false,"Open failed: "..target end
-    local closed=false
-    local ok,err=pcall(function()
-        local result,reason=file:write(payload)
-        assert(result,reason or "Settings write failed")
-        if file.flush then local flushed,why=file:flush();assert(flushed,why or "Settings flush failed") end
-        local result,reason=file:close();closed=true
-        assert(result,reason or "Settings close failed")
-    end)
-    if not closed then pcall(function() file:close() end) end
-    if ok and atomic then
-        local called,result,reason=pcall(os.rename,target,path)
-        ok=called and result~=nil and result~=false
-        err=ok and nil or (reason or result or "Settings rename failed")
-    end
-    if not ok and atomic and os.remove then pcall(os.remove,target) end
-    return ok,err,atomic
-end
-
-local loginLegacyStoragePath=nil
-
-
--- One authorization session per Lua process; gameplay identity never owns it.
-do
-    local licenseScope
-local MasterLicenseConfig = {
-    url = 'https://ios.murshid-loader.shop/connect', game = 'PUBG',
-    timeout = 10, clockSkew = 120, expiryPath = nil,
-    manualExpiry = "2026-12-31 23:59:59", tamperTolerance = 5,
-    secret = 'DIAMONDYT',
-}
-
-local MasterLicenseCore = (function()
-    local Primitives = (function()
-        local floor, abs, max = math.floor, math.abs, math.max
-        local byte, char, format = string.byte, string.char, string.format
-        local U32 = 4294967296
-        local AND, XOR = {}, {}
-        for a = 0, 15 do for b = 0, 15 do
-            local av, bv, both, different, place = a, b, 0, 0, 1
-            for _ = 1, 4 do
-                local x, y = av % 2, bv % 2
-                if x == 1 and y == 1 then both = both + place end
-                if x ~= y then different = different + place end
-                av, bv, place = floor(av / 2), floor(bv / 2), place * 2
-            end
-            AND[a * 16 + b], XOR[a * 16 + b] = both, different
-        end end
-        local function bitop(a, b, lookup)
-            local value, place = 0, 1
-            for _ = 1, 8 do
-                value = value + lookup[(a % 16) * 16 + b % 16] * place
-                a, b, place = floor(a / 16), floor(b / 16), place * 16
-            end
-            return value
-        end
-        local function band(a, b) return bitop(a, b, AND) end
-        local function bxor(a, b) return bitop(a, b, XOR) end
-        local function rol(value, amount)
-            local divisor = 2 ^ (32 - amount)
-            return (value % divisor) * 2 ^ amount + floor(value / divisor)
-        end
-        local function little32(value)
-            return char(value % 256, floor(value / 256) % 256,
-                floor(value / 65536) % 256, floor(value / 16777216) % 256)
-        end
-        local K = {
-            0xd76aa478,0xe8c7b756,0x242070db,0xc1bdceee,0xf57c0faf,0x4787c62a,0xa8304613,0xfd469501,
-            0x698098d8,0x8b44f7af,0xffff5bb1,0x895cd7be,0x6b901122,0xfd987193,0xa679438e,0x49b40821,
-            0xf61e2562,0xc040b340,0x265e5a51,0xe9b6c7aa,0xd62f105d,0x02441453,0xd8a1e681,0xe7d3fbc8,
-            0x21e1cde6,0xc33707d6,0xf4d50d87,0x455a14ed,0xa9e3e905,0xfcefa3f8,0x676f02d9,0x8d2a4c8a,
-            0xfffa3942,0x8771f681,0x6d9d6122,0xfde5380c,0xa4beea44,0x4bdecfa9,0xf6bb4b60,0xbebfbc70,
-            0x289b7ec6,0xeaa127fa,0xd4ef3085,0x04881d05,0xd9d4d039,0xe6db99e5,0x1fa27cf8,0xc4ac5665,
-            0xf4292244,0x432aff97,0xab9423a7,0xfc93a039,0x655b59c3,0x8f0ccc92,0xffeff47d,0x85845dd1,
-            0x6fa87e4f,0xfe2ce6e0,0xa3014314,0x4e0811a1,0xf7537e82,0xbd3af235,0x2ad7d2bb,0xeb86d391
-        }
-        local SHIFT = {7,12,17,22,5,9,14,20,4,11,16,23,6,10,15,21}
-        local function md5_raw(input)
-            assert(type(input) == "string", "MD5 input must be a string")
-            local size = #input
-            local message = input .. char(128) .. string.rep(char(0), (55 - size) % 64)
-                .. little32((size * 8) % U32) .. little32(floor(size / 536870912))
-            local h0, h1, h2, h3 = 0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476
-            local words = {}
-            for offset = 1, #message, 64 do
-                for j = 0, 15 do
-                    local a, b, c, d = byte(message, offset + j * 4, offset + j * 4 + 3)
-                    words[j] = a + b * 256 + c * 65536 + d * 16777216
-                end
-                local a, b, c, d = h0, h1, h2, h3
-                for i = 0, 63 do
-                    local f, g, shiftBase
-                    if i < 16 then
-                        f, g, shiftBase = band(b, c) + band(U32 - 1 - b, d), i, 0
-                    elseif i < 32 then
-                        f, g, shiftBase = band(d, b) + band(U32 - 1 - d, c), (5 * i + 1) % 16, 4
-                    elseif i < 48 then
-                        f, g, shiftBase = bxor(bxor(b, c), d), (3 * i + 5) % 16, 8
-                    else
-                        local bOrNotD = U32 - 1 - band(U32 - 1 - b, d)
-                        f, g, shiftBase = bxor(c, bOrNotD), (7 * i) % 16, 12
-                    end
-                    local nextB = (b + rol((a + f + K[i + 1] + words[g]) % U32,
-                        SHIFT[shiftBase + i % 4 + 1])) % U32
-                    a, b, c, d = d, nextB, b, c
-                end
-                h0, h1, h2, h3 = (h0 + a) % U32, (h1 + b) % U32, (h2 + c) % U32, (h3 + d) % U32
-            end
-            return little32(h0) .. little32(h1) .. little32(h2) .. little32(h3)
-        end
-        local function hex(input)
-            return (input:gsub(".", function(c) return format("%02x", byte(c)) end))
-        end
-        local function md5(input) return hex(md5_raw(input)) end
-        local function form_encode(input)
-            assert(type(input) == "string", "Form value must be a string")
-            return (input:gsub("[^A-Za-z0-9%-%._~ ]", function(c)
-                return format("%%%02X", byte(c)) end):gsub(" ", "+"))
-        end
-        local function constant_time_equal(a, b)
-            if type(a) ~= "string" or type(b) ~= "string" then return false end
-            local difference = abs(#a - #b)
-            for i = 1, max(#a, #b) do
-                difference = difference + abs((byte(a, i) or 0) - (byte(b, i) or 0))
-            end
-            return difference == 0
-        end
-        local function name_uuid(input)
-            local digest = md5_raw(input)
-            local h = hex(digest:sub(1,6) .. char(byte(digest,7) % 16 + 48)
-                .. digest:sub(8,8) .. char(byte(digest,9) % 64 + 128) .. digest:sub(10))
-            return h:sub(1,8) .. "-" .. h:sub(9,12) .. "-" .. h:sub(13,16)
-                .. "-" .. h:sub(17,20) .. "-" .. h:sub(21,32)
-        end
-        return {md5 = md5, md5_raw = md5_raw, form_encode = form_encode,
-                constant_time_equal = constant_time_equal, name_uuid = name_uuid}
-    end)()
-
-    local SESSION_KEY='__LunarLicenseSessionV7'
-    local function loadSession()
-        local t=rawget(_G,SESSION_KEY)
-        if type(t)=='table' and t.authorized==true and t.scope==licenseScope then return t end
-    end
-    local function saveSession(expiresAt)
-        _G[SESSION_KEY]={authorized=true,expiresAt=expiresAt,scope=licenseScope}
-    end
-    local function clearSession() _G[SESSION_KEY]=nil end
-
-    local CreateLocalExpiry = function(cfg)
-        local E = {}
-        local expiredText = 'Mod expired. DM @Masterpiece2025 for renewal.'
-        local tamperText  = "Don't be over smart"
-        local blockedMessage, blockedPhase
-        local function finite(n) return type(n) == 'number' and n == n and n ~= math.huge and n ~= -math.huge end
-        local function parse(text)
-            if type(text) ~= 'string' then return nil end
-            local y,m,d,h,n,s = text:match('^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d):(%d%d)$')
-            y,m,d,h,n,s = tonumber(y),tonumber(m),tonumber(d),tonumber(h),tonumber(n),tonumber(s)
-            if not y or not m or not d or not h or not n or not s or y < 1970 or y > 9999 or m < 1 or m > 12 or h > 23 or n > 59 or s > 59 then return nil end
-            local leap = y % 4 == 0 and (y % 100 ~= 0 or y % 400 == 0)
-            local months = {31, leap and 29 or 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
-            if d < 1 or d > months[m] then return nil end
-            local prior = y - 1
-            local days = 365 * (y - 1970) + math.floor(prior / 4) - math.floor(1969 / 4)
-                - math.floor(prior / 100) + math.floor(1969 / 100)
-                + math.floor(prior / 400) - math.floor(1969 / 400)
-            for i = 1, m - 1 do days = days + months[i] end
-            return (days + d - 1) * 86400 + h * 3600 + n * 60 + s - 6 * 3600
-        end
-        local configured = type(cfg.manualExpiry) == 'string' and cfg.manualExpiry:match('^%s*(.-)%s*$') or cfg.manualExpiry
-        local expiry = parse(configured)
-        local skew = cfg.clockSkew or 120
-        if configured ~= nil and configured ~= '' and not expiry then
-            blockedMessage, blockedPhase = 'Invalid local expiry date. Use YYYY-MM-DD HH:MM:SS.', 'error'
-        end
-        local function block(message, phase)
-            if not blockedMessage then blockedMessage, blockedPhase = message, phase end
-            return false, blockedMessage, blockedPhase
-        end
-        function E.Status() return not blockedMessage, blockedMessage, blockedPhase end
-        function E.MarkTampered() return block(tamperText, 'tampered') end
-        function E.GetExpiry() return expiry end
-        function E.Accept(server, now, world, phone, rtt)
-            if blockedMessage then return E.Status() end
-            if not finite(server) or not finite(now) or now < 0 or world == nil
-                or not finite(rtt) or rtt < 0 or not finite(phone) then
-                return block('Clock verification unavailable.', 'error')
-            end
-            if math.abs(phone - server) > skew + rtt then return E.MarkTampered() end
-            if expiry and server + rtt >= expiry then return block(expiredText, 'expired') end
-            return true
-        end
-        return E
-    end
-
-    local CreateAuth = function(P, cfg, deps)
-        local A = {}
-        licenseScope=P.md5(cfg.url.."\0"..cfg.game.."\0"..cfg.secret)
-        local phase, message = 'locked', 'Enter your key to sign in.'
-        local allowed, pending, generation = false, nil, 0
-        local expiresAt
-        local lastRequestLatencyMs, lastResponseTime, lastResponseWorld
-        local startFn, stopFn, payloadStarted, restartRequired
-        local localExpiry = deps.localExpiry
-        do
-            local stored = loadSession()
-            if stored then
-                allowed = true; expiresAt = stored.expiresAt
-                phase, message = 'active', 'Session restored'
-            end
-        end
-        if localExpiry then
-            local ok, text, state = localExpiry.Status()
-            if not ok then message, phase = text, state end
-        end
-        local function finite(n) return type(n) == 'number' and n == n and n ~= math.huge and n ~= -math.huge end
-        local function readClock()
-            local ok, n, w = pcall(deps.clock)
-            if ok and finite(n) and n >= 0 and w ~= nil then return n, w end
-        end
-        local function notify(text, state)
-            message, phase = text, state
-            if type(deps.status) == 'function' then pcall(deps.status, text, state) end
-        end
-        local function stopPayload()
-            if payloadStarted then
-                payloadStarted = false
-                local ok, accepted = pcall(stopFn)
-                if not ok or accepted == false then restartRequired = true end
-            end
-        end
-        local function revoke(text, state)
-            generation = generation + 1
-            allowed, pending, expiresAt = false, nil, nil
-            lastRequestLatencyMs, lastResponseTime, lastResponseWorld = nil, nil, nil
-            stopPayload()
-            local localDenied = false
-            if localExpiry then
-                local ok, localText, localPhase = localExpiry.Status()
-                if not ok then text, state, localDenied = localText, localPhase, true end
-            end
-            notify(restartRequired and not localDenied
-                and 'Restart required: payload cleanup failed.' or text, state or 'error')
-        end
-        local function startPayload()
-            if payloadStarted or not startFn then return true end
-            payloadStarted = true
-            local before = generation
-            local ok, accepted = pcall(startFn)
-            if not ok or accepted == false then
-                restartRequired = true
-                revoke('Restart required: offline script startup failed.', 'error')
-                return false
-            end
-            return generation == before and allowed
-        end
-        local function denyReason(reason)
-            if type(reason) ~= 'string' then return 'Expired' end
-            local lower = reason:sub(1, 120):lower():gsub('[_%s%-]+', ' ')
-            if lower == 'max devices' or lower == 'maximum devices'
-                or lower == 'max devices reached' then return 'Max Devices' end
-            local clean = reason
-            for _, field in ipairs({'key', 'serial'}) do
-                if pending and type(pending[field]) == 'string' and #pending[field] > 0 then
-                    local needle = pending[field]:gsub('([^%w])', '%%%1')
-                    clean = clean:gsub(needle, '[' .. field .. ']')
-                end
-            end
-            if type(cfg.secret) == 'string' and #cfg.secret > 0 then
-                clean = clean:gsub(cfg.secret:gsub('([^%w])', '%%%1'), '[credential]')
-            end
-            clean = clean:gsub('[%c]', ' '):sub(1, 120)
-            return clean == '' and 'Expired' or ('Expired: ' .. clean)
-        end
-        local function configuredExpiry(result)
-            if cfg.expiryPath == nil then return nil, true end
-            if type(cfg.expiryPath) ~= 'table' or #cfg.expiryPath == 0 then return nil, false end
-            local v = result
-            for _, name in ipairs(cfg.expiryPath) do
-                if type(v) ~= 'table' then return nil, false end
-                v = rawget(v, name)
-            end
-            return v, finite(v) and v > 0 and v % 1 == 0
-        end
-        local function begin(key)
-            if restartRequired or pending then return false end
-            if localExpiry then
-                local ok, text, state = localExpiry.Status()
-                if not ok then revoke(text, state); return false end
-            end
-            if type(key) ~= 'string' then key = '' end
-            key = key:match('^%s*(.-)%s*$')
-            if #key == 0 or #key > 512 then
-                revoke('Expired: enter a valid key.', 'denied'); return false
-            end
-            local now, world = readClock()
-            if not now then
-                revoke('Phone clock unavailable. Please try again.', 'error'); return false
-            end
-            local okSerial, serial = pcall(deps.serial, key)
-            if not okSerial or type(serial) ~= 'string' or #serial == 0 or #serial > 512 then
-                local failure=tostring(serial)
-                local text='Device identifier unavailable.'
-                if not okSerial and failure:find('DEVICE_CACHE_CONFLICT',1,true) then
-                    text='Saved device records conflict. Restore the registered device backup.'
-                elseif not okSerial and failure:find('DEVICE_CACHE_RECOVERY_REQUIRED',1,true) then
-                    text='Saved device data could not be recovered. Check storage or restore its backup.'
-                elseif not okSerial and failure:find('DEVICE_CACHE_SAVE_FAILED',1,true) then
-                    text='Device cache could not be saved. Check game storage access.'
-                end
-                revoke(text,'error');return false
-            end
-            generation = generation + 1
-            local requestId = generation
-            pending = {id = requestId, key = key, serial = serial,
-                       started = now, world = world, deadline = now + cfg.timeout}
-            notify('Signing in...', 'pending')
-            if not pending or pending.id ~= requestId or generation ~= requestId then return false end
-            local body = 'game=' .. P.form_encode(cfg.game)
-                .. '&user_key=' .. P.form_encode(key)
-                .. '&serial=' .. P.form_encode(serial)
-            local function received(success, raw)
-                if not pending or pending.id ~= requestId or generation ~= requestId then return end
-                local current, worldNow = readClock()
-                if not current or worldNow ~= pending.world or current < pending.started
-                    or current >= pending.deadline then
-                    revoke('Request expired. Please sign in again.', 'error'); return
-                end
-                if success ~= true or type(raw) ~= 'string' or #raw == 0 or #raw > 32768 then
-                    revoke('Connection failed. Please try again.', 'error'); return
-                end
-                local ok, result = pcall(deps.decode, raw)
-                if not ok or type(result) ~= 'table' then
-                    revoke('Invalid server response.', 'error'); return
-                end
-                if result.status ~= true then revoke(denyReason(result.reason), 'denied'); return end
-                local data = result.data
-                if type(data) ~= 'table' or type(data.token) ~= 'string' or #data.token ~= 32
-                    or not data.token:match('^[%x]+$') or not finite(data.rng) or data.rng % 1 ~= 0 then
-                    revoke('Incomplete server response.', 'error'); return
-                end
-                local expected = P.md5(cfg.game .. '-' .. key .. '-' .. serial .. '-' .. cfg.secret)
-                if not P.constant_time_equal(data.token:lower(), expected) then
-                    revoke('Server token verification failed.', 'denied'); return
-                end
-                local okWall, wall = pcall(deps.wall)
-                if not okWall or not finite(wall) then
-                    revoke('Phone clock unavailable.', 'error'); return
-                end
-                if localExpiry then
-                    local accepted, text, state = localExpiry.Accept(
-                        data.rng, current, worldNow, wall, current - pending.started)
-                    if not accepted then revoke(text, state); return end
-                elseif math.abs(wall - data.rng) > cfg.clockSkew then
-                    revoke('Phone/server clock mismatch. Check automatic time.', 'error'); return
-                end
-                local expiry, validExpiry = configuredExpiry(result)
-                if not validExpiry then
-                    revoke('Configured server expiry field is missing or invalid.', 'error'); return
-                end
-                if expiry and expiry - data.rng - (current - pending.started) <= 0 then
-                    revoke('Expired', 'denied'); return
-                end
-                local fixedExpiry = localExpiry and localExpiry.GetExpiry()
-                if fixedExpiry then expiry = math.min(expiry or fixedExpiry, fixedExpiry) end
-                lastRequestLatencyMs = (current - pending.started) * 1000
-                lastResponseTime, lastResponseWorld = current, worldNow
-                pending = nil
-                allowed, expiresAt = true, expiry
-                saveSession(expiresAt)
-                if not startPayload() then return end
-                notify('Login successful.', 'active')
-            end
-            local ok, accepted = pcall(deps.post, cfg.url,
-                {['Content-Type'] = 'application/x-www-form-urlencoded'},
-                body, received, cfg.timeout)
-            if not ok or accepted == false then
-                revoke('HTTP request could not start.', 'error'); return false
-            end
-            return true
-        end
-        function A.Login(key) if allowed then return false end; return begin(key) end
-        function A.Tick()
-            if not pending then return end
-            local now, world = readClock()
-            if not now or world ~= pending.world or now < pending.started then
-                revoke('Login clock unavailable. Please try again.', 'locked'); return
-            end
-            if now >= pending.deadline then
-                revoke('Request timed out. Please try again.', 'error')
-            end
-        end
-        function A.IsAuthorized()
-            if allowed and not restartRequired then return true end
-            local stored = loadSession()
-            if stored and not restartRequired then
-                allowed = true; expiresAt = stored.expiresAt; return true
-            end
-            return false
-        end
-        function A.Logout() clearSession(); revoke('Expired: signed out.', 'locked') end
-        function A.FailClosed(text, requiresRestart)
-            if requiresRestart == true then restartRequired = true end
-            revoke(text or 'Online access unavailable.', 'error')
-        end
-        function A.ReportClockTampering()
-            if localExpiry then localExpiry.MarkTampered() end
-            revoke("Don't be over smart", 'tampered')
-        end
-        function A.Bind(onStart, onStop)
-            if type(onStart) ~= 'function' or type(onStop) ~= 'function' then
-                return false, 'START_AND_STOP_REQUIRED'
-            end
-            if startFn and (startFn ~= onStart or stopFn ~= onStop) then return false, 'ALREADY_BOUND' end
-            startFn, stopFn = onStart, onStop
-            if A.IsAuthorized() then return startPayload() end
-            return true
-        end
-        function A.Unbind()
-            revoke('Offline script disconnected.', 'locked')
-            startFn, stopFn = nil, nil
-        end
-        function A.GetRemainingSeconds() return nil end
-        function A.GetState()
-            local authorized = A.IsAuthorized()
-            local sample, age
-            if authorized and lastRequestLatencyMs ~= nil then
-                local now, world = readClock()
-                if now and world == lastResponseWorld and now >= lastResponseTime then
-                    sample, age = lastRequestLatencyMs, now - lastResponseTime
-                end
-            end
-            return {
-                phase = phase, message = message, authorized = authorized,
-                sessionAuthorized = authorized, expiresAt = expiresAt,
-                accessPolicy = "game_session", expiryCheckPolicy = "login_only",
-                periodicRecheck = false, pending = pending ~= nil,
-                linked = startFn ~= nil, restartRequired = restartRequired == true,
-                lastRequestLatencyMs = sample, lastRequestLatencyAgeSeconds = age,
-                latencyScope = "license_http_round_trip"
-            }
-        end
-        return A
-    end
-
-    local Core = {Primitives = Primitives, createExpiry = CreateLocalExpiry}
-    function Core.new(config, dependencies)
-        assert(type(config) == 'table' and type(dependencies) == 'table',
-            'License configuration and dependencies required')
-        local deps = {}
-        for key, value in pairs(dependencies) do deps[key] = value end
-        if deps.localExpiry == nil then deps.localExpiry = CreateLocalExpiry(config) end
-        return CreateAuth(Primitives, config, deps)
-    end
-    return Core
-end)()
-
-    local UI={Version="LunarLoginModule.Murshid.1"}
-    local function member(o,k)
-        if o==nil then return nil end
-        local ok,v=pcall(function() return o[k] end);if ok then return v end
-    end
-    local function valid(o)
-        if o==nil then return false end
-        local ok,v=pcall(slua.isValid,o);return ok and v==true
-    end
-    local vectorClass=rawget(_G,"FVector2D") or import("Vector2D")
-    local colorClass=rawget(_G,"FLinearColor") or import("LinearColor")
-    local anchorClass=rawget(_G,"Anchors")
-    local importedAnchorClass
-    pcall(function() importedAnchorClass=import("Anchors") end)
-    local function vector(x,y) return vectorClass(x,y) end
-    local function color(r,g,b,a)
-        local function linear(v) v=v/255;if v<=0.04045 then return v/12.92 end;return ((v+0.055)/1.055)^2.4 end
-        return colorClass(linear(r),linear(g),linear(b),a or 1)
-    end
-    local function visibility(w,v)
-        local fn=member(w,"SetWidgetVisibility") or member(w,"SetVisibility")
-        assert(type(fn)=="function","UI_VISIBILITY_UNAVAILABLE");fn(w,v)
-    end
-    local function parent()
-        local ok,t=pcall(require,"GameLua.Mod.BaseMod.Common.UI.InGameUITools")
-        if not ok or type(member(t,"GetMainControlBaseUI"))~="function" then return end
-        local found,root=pcall(t.GetMainControlBaseUI);if not found or not valid(root) then return end
-        local p=member(root,"CanvasPanel_0");if not valid(p) then p=member(root,"CanvasPanel_42") end
-        if valid(p) then return p end
-    end
-    local function destroy(d)
-        if not d then return end
-        d.Visible=false
-        if d.Event and d.Handle~=nil then pcall(function() d.Event:Remove(d.Handle) end) end
-        if valid(d.Container) then pcall(function() d.Container:RemoveFromParent() end) end
-        d.Submit=nil;d.Event=nil;d.Handle=nil;d.Container=nil;d.Parent=nil
-        d.Input=nil;d.Button=nil;d.Status=nil;d.Title=nil;d.Detail=nil;d.Hint=nil;d.Design=nil;d.Cache=nil
-    end
-    -- Approved red/green frame, dark red/green heading, light full-color body.
-    -- All gradient/angle/brush work happens at construction. No animation,
-    -- background asset, network dependency, text outline or external backdrop.
-    function UI.Build(kind,key,status,submit)
-        local p=parent();if not p then return nil,"UI_NOT_READY" end
-        local enums=UEnums.ESlateVisibility
-        local passive=enums.SelfHitTestInvisible
-        if enums.Visible==nil or passive==nil then return nil,"UI_ENUM_UNAVAILABLE" end
-        local welcome=kind=="welcome"
-        local W,H=welcome and 600 or 500,welcome and 276 or 248
-        local scale=welcome and 0.8 or 1
-        pcall(function()
-            local v=p:GetCachedGeometry():GetLocalSize()
-            if v.X>24 and v.Y>24 then scale=math.min(scale,(v.X-24)/W,(v.Y-24)/H) end
-        end)
-        local d={Parent=p,Visible=false,Submit=submit,Scale=scale}
-        local ok,buildError=pcall(function()
-            local function make(class,outer)
-                local w=CGame:NewObjectFromPath("/Script/UMG."..class,outer)
-                assert(valid(w),"UI_WIDGET_UNAVAILABLE");return w
-            end
-            d.Container=make("CanvasPanel",p)
-            -- Validate and attach the empty root before allocating static artwork.
-            -- Some SLua CanvasSlot bindings expose SetAnchors but not GetAnchors.
-            local slot=p:AddChildToCanvas(d.Container)
-            assert(slot~=nil,"UI_CANVAS_SLOT_UNAVAILABLE")
-            local got,anchors=pcall(function() return anchorClass() end)
-            if not got or not anchors then got,anchors=pcall(function() return importedAnchorClass() end) end
-            if not got or not anchors then
-                local getter=member(slot,"GetAnchors")
-                if type(getter)=="function" then got,anchors=pcall(getter,slot) end
-            end
-            assert(got and anchors,"UI_ANCHORS_UNAVAILABLE")
-            anchors.Minimum=vector(.5,.5);anchors.Maximum=vector(.5,.5)
-            slot:SetAutoSize(false);slot:SetSize(vector(W,H));slot:SetZOrder(9200)
-            slot:SetAnchors(anchors);slot:SetAlignment(vector(.5,.5));slot:SetPosition(vector(0,0))
-            local pivot=member(d.Container,"SetRenderTransformPivot")
-            if type(pivot)=="function" then pcall(pivot,d.Container,vector(.5,.5)) end
-            local resize=member(d.Container,"SetRenderScale")
-            if type(resize)=="function" then pcall(resize,d.Container,vector(scale,scale)) end
-            visibility(d.Container,passive)
-            local design=make("CanvasPanel",d.Container);d.Design=design
-            local artRoot=design
-            local canCache,cache=pcall(make,"InvalidationBox",d.Container)
-            if canCache and valid(cache) and type(member(cache,"SetCanCache"))=="function" then
-                local attached=pcall(function()cache:AddChild(design);cache:SetCanCache(true);visibility(cache,passive)end)
-                if attached then artRoot=cache;d.Cache=cache end
-            end
-            local artSlot=d.Container:AddChildToCanvas(artRoot)
-            artSlot:SetAutoSize(false);artSlot:SetPosition(vector(0,0));artSlot:SetSize(vector(W,H));artSlot:SetZOrder(1)
-            visibility(design,passive)
-            local function add(w,x,y,ww,hh,z,dynamic)
-                local slot=(dynamic and d.Container or design):AddChildToCanvas(w)
-                slot:SetAutoSize(false);slot:SetPosition(vector(x,y));slot:SetSize(vector(ww,hh));slot:SetZOrder(z)
-                return slot
-            end
-            -- Flatten static gradient rectangles before applying 50% alpha.
-            -- Overlapping body/badge/button fills must not accumulate opacity.
-            local artwork={}
-            local function drawRect(x,y,ww,hh,c,z,opacity)
-                local w=make("Border",d.Container)
-                w:SetBrushColor(colorClass(c.R,c.G,c.B,opacity or .5));visibility(w,passive)
-                add(w,x,y,ww,hh,z);return w
-            end
-            local function rect(x,y,ww,hh,c,z,opacity)
-                artwork[#artwork+1]={X=x,Y=y,W=ww,H=hh,C=c,Z=z,A=opacity or .5,Order=#artwork+1}
-            end
-            local function renderArt()
-                table.sort(artwork,function(a,b)
-                    if a.Z==b.Z then return a.Order>b.Order end
-                    return a.Z>b.Z
-                end)
-                local covered={}
-                local function put(out,x,y,w,h)
-                    if w>.00001 and h>.00001 then out[#out+1]={X=x,Y=y,W=w,H=h} end
-                end
-                for _,shape in ipairs(artwork) do
-                    local pieces={{X=shape.X,Y=shape.Y,W=shape.W,H=shape.H}}
-                    for _,cover in ipairs(covered) do
-                        local nextPieces={}
-                        for _,piece in ipairs(pieces) do
-                            local x1=math.max(piece.X,cover.X);local y1=math.max(piece.Y,cover.Y)
-                            local x2=math.min(piece.X+piece.W,cover.X+cover.W)
-                            local y2=math.min(piece.Y+piece.H,cover.Y+cover.H)
-                            if x2<=x1 or y2<=y1 then nextPieces[#nextPieces+1]=piece
-                            else
-                                put(nextPieces,piece.X,piece.Y,piece.W,y1-piece.Y)
-                                put(nextPieces,piece.X,y2,piece.W,piece.Y+piece.H-y2)
-                                put(nextPieces,piece.X,y1,x1-piece.X,y2-y1)
-                                put(nextPieces,x2,y1,piece.X+piece.W-x2,y2-y1)
-                            end
-                        end
-                        pieces=nextPieces;if #pieces==0 then break end
-                    end
-                    -- Coalesce adjacent pieces of the same solid gradient strip.
-                    -- This keeps clipping from multiplying native UI widgets.
-                    local changed=true
-                    while changed do
-                        changed=false
-                        for i=1,#pieces do
-                            local a=pieces[i]
-                            for j=i+1,#pieces do
-                                local b=pieces[j]
-                                local vertical=math.abs(a.X-b.X)<.00001 and math.abs(a.W-b.W)<.00001
-                                    and (math.abs(a.Y+a.H-b.Y)<.00001 or math.abs(b.Y+b.H-a.Y)<.00001)
-                                local horizontal=math.abs(a.Y-b.Y)<.00001 and math.abs(a.H-b.H)<.00001
-                                    and (math.abs(a.X+a.W-b.X)<.00001 or math.abs(b.X+b.W-a.X)<.00001)
-                                if vertical or horizontal then
-                                    local x,y=math.min(a.X,b.X),math.min(a.Y,b.Y)
-                                    a.W=math.max(a.X+a.W,b.X+b.W)-x
-                                    a.H=math.max(a.Y+a.H,b.Y+b.H)-y;a.X=x;a.Y=y
-                                    table.remove(pieces,j);changed=true;break
-                                end
-                            end
-                            if changed then break end
-                        end
-                    end
-                    for _,piece in ipairs(pieces) do
-                        drawRect(piece.X,piece.Y,piece.W,piece.H,shape.C,shape.Z,shape.A)
-                    end
-                    covered[#covered+1]=shape
-                end
-                artwork=nil
-            end
-            local function sample(stops,t,opacity)
-                t=math.max(0,math.min(1,t));local a,b,u
-                if t<=.5 then a,b,u=stops[1],stops[2],t*2 else a,b,u=stops[2],stops[3],(t-.5)*2 end
-                return color(a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u,a[3]+(b[3]-a[3])*u,opacity)
-            end
-            local function panel(x,y,ww,hh,cut,stops,z,columns,opacity)
-                columns=math.min(columns,12) -- Static cached gradient geometry.
-                for i=0,columns-1 do
-                    local a=ww*i/columns;local b=ww*(i+1)/columns
-                    local inset=math.max(0,cut-math.min(a,ww-b))
-                    rect(x+a,y+inset,b-a,hh-inset*2,sample(stops,(i+.5)/columns,opacity),z,opacity)
-                end
-            end
-            local function rail(x,y,ww,hh,stops,z,columns)
-                columns=math.min(columns,12)
-                for i=0,columns-1 do
-                    rect(x+ww*i/columns,y,ww/columns,hh,sample(stops,(i+.5)/columns),z)
-                end
-            end
-            local function line(ax,ay,bx,by,th,c,z)
-                local dx,dy=bx-ax,by-ay
-                local len=math.sqrt(dx*dx+dy*dy)
-                if len<=0 then return end
-                local angle
-                if dx==0 then angle=dy>=0 and 90 or -90
-                else angle=math.atan(dy/dx)*180/math.pi;if dx<0 then angle=angle+180 end end
-                local w=drawRect((ax+bx-len)/2,(ay+by-th)/2,len,th,c,z,z>=7 and 1 or .5)
-                w:SetRenderTransformPivot(vector(.5,.5));w:SetRenderAngle(angle)
-            end
-            local slate=import("SlateColor")
-            local fontObject
-            if slua and type(slua.loadObject)=="function" then
-                local loaded,obj=pcall(slua.loadObject,"/Engine/EngineFonts/Roboto.Roboto")
-                if loaded and valid(obj) then fontObject=obj end
-            end
-            local function style(w,size,c,bold)
-                local font=member(w,"Font")
-                if font then
-                    if type(font)=="table" then local copy={};for k,v in pairs(font) do copy[k]=v end;font=copy end
-                    font.Size=size
-                    if fontObject then font.FontObject=fontObject;font.TypefaceFontName=bold and "Bold" or "Regular" end
-                    if font.OutlineSettings then
-                        local outline=font.OutlineSettings
-                        if type(outline)=="table" then local copy={};for k,v in pairs(outline) do copy[k]=v end;outline=copy end
-                        outline.OutlineSize=0;font.OutlineSettings=outline
-                    end
-                    w:SetFont(font)
-                end
-                w:SetColorAndOpacity(slate(c))
-                pcall(function()w:SetShadowOffset(vector(0,0));w:SetShadowColorAndOpacity(color(0,0,0,0))end)
-                pcall(function() w:SetAutoWrapText(true) end)
-            end
-            local function text(value,x,y,ww,hh,size,c,z,bold,center,dynamic)
-                local w=make("TextBlock",d.Container);w:SetText(value);style(w,size,c,bold)
-                visibility(w,passive);add(w,x,y,ww,hh,z,dynamic)
-                if center then pcall(function() w:SetJustification(1) end) end
-                return w
-            end
-            local frame={{4,13,29},{8,68,146},{14,126,255}}
-            local bright={{57,104,163},{111,181,255},{195,225,255}}
-            local edge={{1,5,13},{5,22,49},{8,58,122}}
-            local body={{3,7,15},{7,20,39},{9,38,76}}
-            local header={{2,7,17},{6,27,61},{9,72,157}}
-            local gold={{13,47,92},{77,161,255},{13,88,181}}
-            local white=color(255,255,255)
-            local forest=color(231,243,255)
-            local burgundy=color(192,221,255)
-            -- Perimeter only: an opaque full-panel backing would destroy
-            -- the requested body transparency even with alpha on the body.
-            panel(6,6,W-12,H-12,10,body,2,24,.5)
-            rail(13,0,W-26,6,frame,3,24)
-            rail(13,H-6,W-26,6,frame,3,24)
-            rect(0,13,6,H-26,color(4,13,29),3)
-            rect(W-6,13,6,H-26,color(14,126,255),3)
-            rail(13,1,W-26,1.5,bright,3,24)
-            rail(13,H-3,W-26,1.5,edge,3,24)
-            rect(1,13,1.5,H-26,color(68,134,211),3)
-            rect(W-3,13,1.5,H-26,color(180,222,255),3)
-            for _,s in ipairs({{1,13,13,1},{1,H-13,13,H-1}}) do line(s[1],s[2],s[3],s[4],2,color(91,159,239),3) end
-            for _,s in ipairs({{W-13,1,W-1,13},{W-13,H-1,W-1,H-13}}) do line(s[1],s[2],s[3],s[4],2,color(154,211,255),3) end
-            panel(10,10,W-20,65,16,gold,4,24,1)
-            panel(13,13,W-26,59,14,header,5,32,1)
-            if welcome then
-                d.Title=text("Welcome to @Masterpiece2025 Lua mod",24,22,W-48,42,19,white,7,true,true)
-                local pw=math.min(340,W-72);local px=(W-pw)/2
-                panel(px,99,pw,51,12,gold,4,16)
-                panel(px+3,102,pw-6,45,10,{{4,19,42},{13,68,132},{4,28,64}},5,20)
-                d.Detail=text("Kill limit 8-10",px+16,109,pw-32,34,23,white,7,true,true)
-                d.Hint=text("Play smart and avoid report",30,165,W-60,32,17,forest,7,true,true)
-            else
-                d.Title=text("MASTERAHSANYT",22,15,W-44,31,24,white,7,true,true)
-                text("LOGIN",22,45,W-44,21,12,white,7,true,true)
-                line(W/2-118,56,W/2-47,56,1,color(224,242,255),7)
-                line(W/2+47,56,W/2+118,56,1,color(224,242,255),7)
-                text("LOGIN KEY",22,82,W-44,20,13,burgundy,7,true,false)
-                rail(27,104,W-54,2,gold,4,24)
-                rail(27,143,W-54,2,gold,4,24)
-                rect(20,111,2,27,color(13,47,92),4)
-                rect(W-22,111,2,27,color(13,88,181),4)
-                line(20,111,27,104,2,color(77,161,255),4)
-                line(W-27,104,W-20,111,2,color(77,161,255),4)
-                line(20,138,27,145,2,color(77,161,255),4)
-                line(W-27,145,W-20,138,2,color(77,161,255),4)
-                d.Input=make("EditableTextBox",d.Container)
-                d.Input:SetText(key or "")
-                -- Input-specific native style; TextBlock-only methods stay unused.
-                local fg=forest;local bg=color(3,7,15,0)
-                local inputStyle=member(d.Input,"WidgetStyle")
-                if inputStyle then
-                    if type(inputStyle)=="table" then local copy={};for k,v in pairs(inputStyle) do copy[k]=v end;inputStyle=copy end
-                    local inputFont=member(inputStyle,"Font")
-                    if inputFont then
-                        if type(inputFont)=="table" then local copy={};for k,v in pairs(inputFont) do copy[k]=v end;inputFont=copy end
-                        inputFont.Size=17
-                        if fontObject then inputFont.FontObject=fontObject;inputFont.TypefaceFontName="Regular" end
-                        inputStyle.Font=inputFont
-                    end
-                    inputStyle.ForegroundColor=slate(fg);inputStyle.ReadOnlyForegroundColor=slate(fg)
-                    for _,name in ipairs({"BackgroundImageNormal","BackgroundImageHovered","BackgroundImageFocused","BackgroundImageReadOnly"}) do
-                        local brush=member(inputStyle,name)
-                        if brush then
-                            if type(brush)=="table" then local copy={};for k,v in pairs(brush) do copy[k]=v end;brush=copy end
-                            brush.TintColor=slate(bg);inputStyle[name]=brush
-                        end
-                    end
-                    d.Input.WidgetStyle=inputStyle
-                else
-                    local inputFont=member(d.Input,"Font")
-                    if inputFont then
-                        if type(inputFont)=="table" then local copy={};for k,v in pairs(inputFont) do copy[k]=v end;inputFont=copy end
-                        inputFont.Size=17;d.Input.Font=inputFont
-                    end
-                    d.Input.ForegroundColor=fg;d.Input.BackgroundColor=bg
-                end
-                local setForeground=member(d.Input,"SetForegroundColor")
-                if type(setForeground)=="function" then setForeground(d.Input,fg) end
-                pcall(function() d.Input:SetHintText("Enter your key") end)
-                visibility(d.Input,enums.Visible);add(d.Input,23,107,W-46,35,8,true)
-                d.Hint=text("Your key is saved automatically",22,149,W-44,19,11,burgundy,7,false,false)
-                d.Status=text(status or "Enter your key",22,170,W-44,23,11,burgundy,8,false,false,true)
-            end
-            local button=make("Button",d.Container);d.Button=button
-            local by=welcome and 212 or 201;local bh=welcome and 42 or 34
-            local bw=welcome and 202 or 190;local bx=(W-bw)/2
-            panel(bx-4,by-3,bw+8,bh+6,9,gold,4,16)
-            panel(bx,by,bw,bh,8,{{5,40,92},{10,93,192},{4,46,108}},5,16)
-            pcall(function() button:SetBackgroundColor(color(255,255,255,0)) end)
-            visibility(button,enums.Visible)
-            local label=make("TextBlock",button);label:SetText("OK");style(label,17,white,true);visibility(label,passive)
-            local labelSlot=button:AddChild(label)
-            pcall(function() labelSlot:SetHorizontalAlignment(2);labelSlot:SetVerticalAlignment(2) end)
-            add(button,bx,by,bw,bh,9,true)
-            d.Event=button.OnClicked
-            d.Handle=d.Event:Add(function()
-                if not d.Visible or d.Busy then return end
-                if welcome then
-                    destroy(d);d.Dismissed=true
-                    local l=_G.LunarLoginRuntime;if l and l.WelcomeUI==d then l.WelcomeUI=nil;l.Dismissed=true;l.NeedsUpdate=false end
-                    return
-                end
-                local okRead,k=pcall(function() return d.Input:GetText() end)
-                if not okRead or type(k)~="string" then return end
-                k=k:match("^%s*(.-)%s*$")
-                if #k==0 or #k>512 then d.Status:SetText("Enter a valid key");return end
-                if d.Submit then d.Submit(k) end
-            end)
-            renderArt()
-
-        end)
-        if not ok then UI.LastBuildError=tostring(buildError);destroy(d);return nil,"UI_BUILD_UNAVAILABLE" end
-        UI.LastBuildError=nil
-        d.Visible=true;return d
-    end
-    _G.LunarUIAssetCache=nil
-    -- Hot UI upgrades retain the existing verified or pending license session.
-    local existing=_G.LunarLoginRuntime
-    if existing and existing.UIFactory and existing.UIFactory.Version~=UI.Version
-        and existing.Scope==MasterLicenseCore.Primitives.md5(MasterLicenseConfig.url.."\0"..MasterLicenseConfig.game.."\0"..MasterLicenseConfig.secret) then
-        local visibleWelcome=existing.WelcomeUI and existing.WelcomeUI.Visible
-        if existing.DestroyUI then existing.DestroyUI() end
-        existing.UIFactory.Build=UI.Build;existing.UIFactory.Version=UI.Version
-        if visibleWelcome then existing.WelcomeShown=false end
-        existing.NeedsUpdate=true
-    end
-    local function hex(s) return (s:gsub('.',function(c) return string.format('%02x',string.byte(c)) end)) end
-    local function unhex(s)
-        if type(s)~="string" or #s>1024 or #s%2~=0 or s:find('[^%x]') then return nil end
-        return (s:gsub('..',function(v) return string.char(tonumber(v,16)) end))
-    end
-    local current=_G.LunarLoginRuntime
-    -- Existing runtime survives character recreation and source reload in this process.
-    local expectedScope=MasterLicenseCore.Primitives.md5(MasterLicenseConfig.url.."\0"..MasterLicenseConfig.game.."\0"..MasterLicenseConfig.secret)
-    if not current or current.Scope~=expectedScope then
-        if current and current.DestroyUI then current.DestroyUI() end
-        local L={Authorized=false,Pending=false,NeedsUpdate=true,WelcomeShown=false,
-            Key="",Seed="",Scope=expectedScope,StorageVersion=1,Status="Enter your key",Diagnostics={HTTP=0,DeviceReads=0}}
-        _G.LunarLoginRuntime=L
-        L.UIFactory=UI
-        -- Identity is pinned independently of the feature-settings location.
-        -- All IO is bounded and happens at startup/login, or a delayed save retry.
-        local paths=loginStoragePaths()
-        for i,path in ipairs(paths) do paths[i]=path:gsub("MASTERPIECE_UMG_ESP_settings.lua$","MASTERAHSAN_LOGIN_MURSHID_V7_settings.lua") end
-        local function loginPath(featurePath)
-            if type(featurePath)~="string" then return nil end
-            local prefix=featurePath:match("^(.*[/\\])[^/\\]+$")
-            return (prefix or "").."MASTERAHSAN_LOGIN_MURSHID_V7_settings.lua"
-        end
-        local function identityPath(path)
-            return path:gsub("MASTERAHSAN_LOGIN_MURSHID_V7_settings%.lua$","MASTERAHSAN_DEVICE_MURSHID_V1_settings.lua")
-        end
-        local function digest(key,seed)
-            return MasterLicenseCore.Primitives.md5("LUNAR-DEVICE-1\0"..L.Scope.."\0"..key.."\0"..seed)
-        end
-        local function readRecord(path,identity)
-            if not (io and type(io.open)=="function") then return nil,"unreadable" end
-            local ok,file,reason,code=pcall(io.open,path,"r")
-            if not ok then return nil,"unreadable" end
-            if not file then
-                local text=type(reason)=="string" and reason:lower() or ""
-                if reason==nil or code==2 or text:find("no such file",1,true)
-                    or text:find("not found",1,true) or text:find("does not exist",1,true) then
-                    return nil,"missing"
-                end
-                return nil,"unreadable"
-            end
-            local good,data=pcall(function() return file:read(4097) end)
-            pcall(function() file:close() end)
-            if not good or type(data)~="string" then return nil,"unreadable" end
-            if #data>4096 then return nil,"invalid" end
-            local scope=data:match('%f[%w_]Scope%s*=%s*"([%x]+)"')
-            if scope and scope~=L.Scope then return nil,"other_scope" end
-            if scope~=L.Scope then return nil,"invalid" end
-            local key=unhex(data:match('%f[%w_]KeyHex%s*=%s*"([^"]*)"'))
-            local seed=unhex(data:match('%f[%w_]SeedHex%s*=%s*"([^"]*)"'))
-            if key==nil or seed==nil or #seed==0 or #seed>512 then return nil,"invalid" end
-            local check=data:match('%f[%w_]Check%s*=%s*"([%x]+)"')
-            local version=data:match('%f[%w_]Version%s*=%s*(%d+)')
-            if identity or check or version then
-                if version~="1" or check~=digest(key,seed) then return nil,"invalid" end
-            end
-            return {Key=key,Seed=seed,Path=path,Identity=identity,Checked=version=="1"},"valid"
-        end
-        local function candidates()
-            local list,seen={},{}
-            local function add(path)
-                if type(path)=="string" and not seen[path] then seen[path]=true;list[#list+1]=path end
-            end
-            add(L.Path);add(L.PreferredPath)
-            for _,path in ipairs(paths) do add(path) end
-            return list
-        end
-        local function recover()
-            if L.IdentityPinned then return true end
-            local identities,legacy,issues={},{},{}
-            local function collect(base,path,identity)
-                local record,state=readRecord(path,identity)
-                if record then
-                    record.Base=base
-                    local list=identity and identities or legacy;list[#list+1]=record
-                elseif state=="invalid" or (state=="unreadable" and base==L.PreferredPath) then
-                    issues[#issues+1]=state
-                end
-            end
-            for _,base in ipairs(candidates()) do
-                local device=identityPath(base)
-                collect(base,device,true);collect(base,device..".bak",true)
-                collect(base,base,false);collect(base,base..".bak",false)
-            end
-            local list=#identities>0 and identities or legacy
-            local first=list[1]
-            if first then
-                for _,record in ipairs(list) do
-                    if record.Seed~=first.Seed then
-                        L.IdentityError="DEVICE_CACHE_CONFLICT";L.Diagnostics.Identity="conflict";return false
-                    end
-                end
-                L.Seed=first.Seed;L.Key=first.Key;L.Path=first.Base
-                if L.Key=="" then
-                    for _,record in ipairs(list) do
-                        if record.Key~="" then L.Key=record.Key;break end
-                    end
-                end
-                -- A matching legacy copy can recover the key after a lost write.
-                if L.Key=="" then
-                    for _,record in ipairs(legacy) do
-                        if record.Seed==L.Seed and record.Key~="" then L.Key=record.Key;break end
-                    end
-                end
-                L.IdentityPinned=true;L.IdentityPersisted=true;L.HasIdentityRecord=first.Identity
-                L.IdentityError=nil;L.Dirty=true
-                L.Diagnostics.Identity=first.Identity and "restored" or "legacy_migration"
-                return true
-            end
-            if #issues>0 then
-                L.IdentityError="DEVICE_CACHE_RECOVERY_REQUIRED";L.Diagnostics.Identity="recovery_required";return false
-            end
-            L.IdentityError=nil;L.Diagnostics.Identity="new_install";return true
-        end
-        local function payload(key,seed)
-            return 'return { Version = 1, Scope = "'..L.Scope..'", KeyHex = "'..hex(key)
-                ..'", SeedHex = "'..hex(seed)..'", Check = "'..digest(key,seed)..'" }'
-        end
-        local function verifiedWrite(path,identity,key,seed,data)
-            local current,state=readRecord(path,identity)
-            if current and current.Checked and current.Seed==seed and current.Key==key then return true end
-            if state=="unreadable" or state=="other_scope" then return false end
-            if current and current.Seed~=seed and (identity or not L.HasIdentityRecord) then return false end
-            local ok=loginWriteSettings(path,data)
-            if not ok then return false end
-            local result=readRecord(path,identity)
-            return result~=nil and result.Checked and result.Seed==seed and result.Key==key
-        end
-        L.Save=function()
-            if L.Seed=="" or L.IdentityError then return false end
-            local key=L.AttemptKey or L.Key
-            local data=payload(key,L.Seed)
-            local preferred=candidates()
-            for _,base in ipairs(preferred) do
-                local device=identityPath(base)
-                local old,oldState=readRecord(base,false)
-                local current,currentState=readRecord(device,true)
-                -- Never fork around an unreadable/conflicting saved identity.
-                if oldState~="unreadable" and currentState~="unreadable"
-                    and oldState~="other_scope" and currentState~="other_scope"
-                    and (not old or old.Seed==L.Seed or L.HasIdentityRecord)
-                    and (not current or current.Seed==L.Seed) then
-                    local a=verifiedWrite(device,true,key,L.Seed,data)
-                    local b=verifiedWrite(device..".bak",true,key,L.Seed,data)
-                    local c=verifiedWrite(base,false,key,L.Seed,data)
-                    local d=verifiedWrite(base..".bak",false,key,L.Seed,data)
-                    if (a or b) and ((a and b) or c or d) then
-                        L.Path=base;L.Key=key;L.IdentityPinned=true;L.IdentityPersisted=true;L.HasIdentityRecord=true
-                        L.IdentityError=nil;L.Dirty=not (a and b and c and d)
-                        L.SaveRetryAt=L.Dirty and (os.time()+30) or nil
-                        L.SaveError=L.Dirty and "Device backup repair pending" or nil
-                        L.Diagnostics.Identity=L.Dirty and "backup_pending" or "saved"
-                        return true
-                    end
-                end
-            end
-            L.Dirty=true;L.SaveRetryAt=os.time()+30
-            L.SaveError="Device cache could not be verified";L.Diagnostics.Identity="save_failed"
-            return false
-        end
-        L.BindSettingsPath=function(featurePath)
-            L.PreferredPath=loginPath(featurePath)
-            -- Once recovered, neither the key nor seed is replaced by settings.
-            if not L.IdentityPinned then recover() end
-            if L.Seed~="" and not L.IdentityError and (L.Dirty or not L.IdentityPersisted) then L.Save() end
-        end
-        L.EnsureIdentity=function()
-            if not L.IdentityPinned then
-                L.Seed=""
-                assert(recover(),L.IdentityError or "DEVICE_CACHE_RECOVERY_REQUIRED")
-            end
-            if L.Seed=="" then
-                L.Diagnostics.DeviceReads=L.Diagnostics.DeviceReads+1
-                local id=Client.GetPhoneDeviceID()
-                assert(type(id)=="string" and #id>0 and #id<=512,"DEVICE_ID_UNAVAILABLE")
-                L.Seed=id
-            end
-            local saved=L.Save()
-            -- A readable previously stored identity stays usable on read-only
-            -- storage. Backup repair must not invent or force a new device ID.
-            assert(saved or L.IdentityPersisted,"DEVICE_CACHE_SAVE_FAILED")
-        end
-        recover()
-        L.DestroyUI=function() destroy(L.LoginUI);destroy(L.WelcomeUI);L.LoginUI=nil;L.WelcomeUI=nil end
-        local function wake()
-            if _G.MasterAhsanLogin and _G.MasterAhsanLogin._Wake then _G.MasterAhsanLogin._Wake() end
-        end
-        L.Core=MasterLicenseCore
-        L.Auth=MasterLicenseCore.new(MasterLicenseConfig,{
-            clock=function() local t=os.time();return t,L.Scope end,
-            wall=function() return os.time() end,
-            serial=function(key)
-                L.EnsureIdentity()
-                return MasterLicenseCore.Primitives.name_uuid('MASTER-LUA-V1\0'..key..'\0'..L.Seed)
-            end,
-            decode=function(raw) local json=require("common.json_util");return json.decode(raw) end,
-            post=function(url,headers,body,callback,timeout)
-                local http=ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
-                L.Diagnostics.HTTP=L.Diagnostics.HTTP+1
-                return http:Post(url,headers,body,nil,callback,timeout)
-            end,
-            status=function(message,phase)
-                L.Status=message;L.Pending=phase=="pending"
-                if phase=="active" then
-                    L.Authorized=true;L.Key=L.AttemptKey or L.Key;L.Save()
-                    destroy(L.LoginUI);L.LoginUI=nil
-                else L.Authorized=false end
-                L.NeedsUpdate=true
-                local d=L.LoginUI
-                if d then
-                    if d.StatusText~=message then d.Status:SetText(message);d.StatusText=message end
-                    if d.Busy~=L.Pending then
-                        d.Busy=L.Pending
-                        pcall(function() d.Input:SetIsEnabled(not L.Pending);d.Button:SetIsEnabled(not L.Pending) end)
-                    end
-                end
-                wake()
-            end
-        })
-        L.Authorized=L.Auth.IsAuthorized()
-        L.Login=function(key)
-            if L.Authorized or L.Pending then return false end
-            L.AttemptKey=type(key)=="string" and key:match("^%s*(.-)%s*$") or ""
-            local ok,result=pcall(L.Auth.Login,L.AttemptKey)
-            if not ok then L.Status="Login could not start";L.Pending=false;L.NeedsUpdate=true;wake();return false end
-            return result
-        end
-        L.Logout=function()
-            L.Auth.Logout();L.Authorized=false;L.DestroyUI();L.NeedsUpdate=true;wake()
-        end
-        L.Update=function()
-            if L.Pending then L.Auth.Tick() end
-            if L.Dirty and (not L.SaveRetryAt or os.time()>=L.SaveRetryAt or os.time()<L.SaveRetryAt-30) then L.Save() end
-            if L.Authorized then
-                if not L.WelcomeShown then
-                    local d=UI.Build("welcome")
-                    if d then L.WelcomeUI=d;L.WelcomeShown=true end
-                end
-                L.NeedsUpdate=not L.WelcomeShown or L.Dirty
-                return
-            end
-            local p=parent()
-            if L.LoginUI and (not valid(L.LoginUI.Container) or p~=L.LoginUI.Parent) then destroy(L.LoginUI);L.LoginUI=nil end
-            if not L.LoginUI then
-                local d=UI.Build("login",L.Key,L.Status,L.Login)
-                if d then
-                    d.Busy=L.Pending;d.StatusText=L.Status;L.LoginUI=d
-                    pcall(function() d.Input:SetIsEnabled(not L.Pending);d.Button:SetIsEnabled(not L.Pending) end)
-                end
-            end
-            L.NeedsUpdate=true -- Half-second retry/readiness while locked only.
-        end
-    end
-    _G.MasterLicenseLogin=function(key) return _G.LunarLoginRuntime.Login(key) end
-    _G.MasterLicenseLogout=function() return _G.LunarLoginRuntime.Logout() end
-    _G.MasterLicenseStatus=function()
-        local l=_G.LunarLoginRuntime
-        return {authorized=l.Authorized,pending=l.Pending,message=l.Status,
-            periodicRecheck=false,expiryCheckPolicy="login_only",saveOK=not l.Dirty,identityState=l.Diagnostics.Identity}
-    end
-
-end
-
-
-local L=_G.LunarLoginRuntime
-API.Runtime=L
-local ticker
-pcall(function() ticker=require("common.time_ticker") end)
-local function dispatch()
-    local authorized=L.Authorized==true
-    for _,binding in pairs(API.Subscribers) do
-        if binding.Last~=authorized then
-            binding.Last=authorized
-            local callback
-            if authorized then callback=binding.OnAuthorized else callback=binding.OnLocked end
-            if callback then
-                local ok,why=pcall(callback,L.Status)
-                if not ok then API.Errors=API.Errors+1;API.LastError=tostring(why) end
-            end
-        end
-    end
-end
-local function update()
-    if not API.Started or API.Stopped then return end
-    local ok,why=pcall(L.Update)
-    if not ok then API.Errors=API.Errors+1;API.LastError=tostring(why) end
-    dispatch()
-end
-local schedule
-schedule=function(delay)
-    if API.Stopped or not API.Started or API.PendingTimer then return end
-    if not ticker or type(ticker.AddTimerOnce)~="function" then API.LastError="TIMER_UNAVAILABLE";return end
-    API.PendingTimer=true
-    local ok,why=pcall(ticker.AddTimerOnce,delay,function()
-        if API.Stopped or _G.MasterAhsanLogin~=API then return end
-        API.PendingTimer=false;update()
-        if L.NeedsUpdate or L.Pending or L.Dirty then schedule(0.5) end
-    end)
-    if not ok then API.PendingTimer=false;API.Errors=API.Errors+1;API.LastError=tostring(why) end
-end
-API._Wake=function()
-    if API.Started and not API.Stopped then schedule(0.01) end
-end
-function API.Start(options)
-    if API.Stopped then return false,"MODULE_STOPPED" end
-    options=options or {}
-    if options.settingsPath then L.BindSettingsPath(options.settingsPath)
-    elseif not API.StorageLocated then
-        API.StorageLocated=true
-        for _,suffix in ipairs({"MASTERAHSAN_FEATURES_V3_settings.lua","MASTERPIECE_UMG_ESP_settings.lua"}) do
-            for _,path in ipairs(loginStoragePaths()) do
-                path=path:gsub("MASTERPIECE_UMG_ESP_settings%.lua$",suffix)
-                local ok,file=pcall(function()return io.open(path,"r")end)
-                if ok and file then
-                    local good,first=pcall(function()return file:read(1)end)
-                    pcall(function()file:close()end)
-                    if good and type(first)=="string" and first~="" then API.StoragePath=path;break end
-                end
-            end
-            if API.StoragePath then break end
-        end
-        if API.StoragePath then L.BindSettingsPath(API.StoragePath) end
-    end
-    API.Started=true;L.NeedsUpdate=true
-    if options.onAuthorized or options.onLocked then API.Bind(options.onAuthorized,options.onLocked) end
-    update();schedule(0.01)
-    return true
-end
-function API.Bind(onAuthorized,onLocked)
-    assert(type(onAuthorized)=="function" or type(onLocked)=="function","CALLBACK_REQUIRED")
-    local handle={OnAuthorized=onAuthorized,OnLocked=onLocked,Last=nil}
-    API.Subscribers[handle]=handle
-    if API.Started then dispatch() end
-    return function() API.Subscribers[handle]=nil end
-end
-function API.IsAuthorized() return not API.Stopped and L.Authorized==true end
-function API.Login(key)
-    if not API.Started then API.Start() end
-    if API.Stopped then return false end
-    local result=L.Login(key);API._Wake();return result
-end
-function API.Logout()
-    if API.Stopped then return end
-    L.Logout();dispatch();API._Wake()
-end
-function API.Status()
-    return {authorized=API.IsAuthorized(),pending=L.Pending,message=L.Status,
-        errors=API.Errors,lastError=API.LastError,endpoint="https://ios.murshid-loader.shop/connect"}
-end
-function API.Update() update() end
-function API.Stop()
-    if API.Stopped then return end
-    -- Stop revokes the bound host before detaching its UI/timer. Existing device
-    -- records remain untouched so the next load can recover the same serial.
-    L.Logout();dispatch();API.Stopped=true;API.Started=false;L.DestroyUI()
-    API.Subscribers={}
-end
-
--- Apply to a host-owned feature callback. This never changes its game class.
-function API.Guard(callback)
-    assert(type(callback)=="function","CALLBACK_REQUIRED")
-    return function(...)
-        if not API.IsAuthorized() then return nil,"LOGIN_REQUIRED" end
-        return callback(...)
-    end
-end
-
-return API
 
 -- Original native class construction and registrations, verbatim inside the factory.
 do
@@ -9002,16 +9011,28 @@ return require("combine_class").DeclareFeature(CBRPlayerCharacterBase, {
 }, "BRPlayerCharacterBase")
 end
 local exported=buildOriginalClass()
-local started,startError=pcall(function()
-g_UXOfficial_EnsureHackMenu()
-if _G.LunarStandaloneWelcome then _G.LunarStandaloneWelcome.NeedsUpdate=true end
-g_UXOfficial_FastTick()
-g_UXOfficial_StartSettingsMaintenance()
-g_UXOfficial_ShotESP.Running = true
-g_UXOfficial_ESPTick()
-end)
-if not started and _G.LunarFeatures and _G.LunarFeatures.Error then
-    _G.LunarFeatures.Error("Startup",startError)
+local function UXOfficial_AuthorizedStartup()
+    if _G.__UXOfficialAuthorizedStartupDone then return end
+    if not (_G.MasterAhsanLogin and _G.MasterAhsanLogin.IsAuthorized and _G.MasterAhsanLogin.IsAuthorized()) then return end
+    _G.__UXOfficialAuthorizedStartupDone = true
+    local started,startError=pcall(function()
+        g_UXOfficial_EnsureHackMenu()
+        if _G.LunarStandaloneWelcome then _G.LunarStandaloneWelcome.NeedsUpdate=true end
+        g_UXOfficial_FastTick()
+        g_UXOfficial_StartSettingsMaintenance()
+        g_UXOfficial_ShotESP.Running = true
+        g_UXOfficial_ESPTick()
+    end)
+    if not started and _G.LunarFeatures and _G.LunarFeatures.Error then
+        _G.LunarFeatures.Error("Startup",startError)
+    end
 end
+if _G.MasterAhsanLogin and _G.MasterAhsanLogin.Bind then
+    _G.MasterAhsanLogin.Bind(UXOfficial_AuthorizedStartup, function()
+        -- Lock the visible menu while authorization is absent; startup is never run here.
+        _G.__UXOfficialAuthorizedStartupDone = false
+    end)
+end
+UXOfficial_AuthorizedStartup()
 return exported
 end
