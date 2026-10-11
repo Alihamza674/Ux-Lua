@@ -1,13 +1,13 @@
 do -- Isolate login implementation locals from the main gameplay chunk.
 -- Standalone Murshid login/key module for the supplied PUBG/SLua runtime.
 -- require("MurshidLogin") returns its API; Start() opens key UI.
-local existing=_G.UXOfficialProLogin
-if existing and existing.Version=="UXOfficialProLogin.Murshid.1" and not existing.Stopped then return existing end
+local existing=_G.UXOfficialLogin
+if existing and existing.Version=="UXOfficialLogin.Murshid.1" and not existing.Stopped then return existing end
 if existing and existing.Stop then pcall(existing.Stop) end
 if _G.LunarLoginRuntime and _G.LunarLoginRuntime.DestroyUI then pcall(_G.LunarLoginRuntime.DestroyUI) end
 _G.LunarLoginRuntime=nil
-local API={Version="UXOfficialProLogin.Murshid.1",Started=false,Stopped=false,PendingTimer=false,Subscribers={},Errors=0}
-_G.UXOfficialProLogin=API
+local API={Version="UXOfficialLogin.Murshid.1",Started=false,Stopped=false,PendingTimer=false,Subscribers={},Errors=0}
+_G.UXOfficialLogin=API
 local loginStorageFilename = "UXOfficial_UMG_ESP_settings.lua"
 local function loginStoragePaths()
     local paths = {
@@ -183,7 +183,7 @@ local UXOfficialLicenseCore = (function()
 
     local CreateLocalExpiry = function(cfg)
         local E = {}
-        local expiredText = 'Mod expired. DM @UX_Official for renewal.'
+        local expiredText = 'Login code expired contact your reseller for renewal.'
         local tamperText  = "Don't be over smart"
         local blockedMessage, blockedPhase
         local function finite(n) return type(n) == 'number' and n == n and n ~= math.huge and n ~= -math.huge end
@@ -742,8 +742,8 @@ end)()
                 d.Detail=text("Kill limit 8-10",px+16,109,pw-32,34,23,white,7,true,true)
                 d.Hint=text("Play smart and avoid report",30,165,W-60,32,17,forest,7,true,true)
             else
-                d.Title=text("UXOfficial",22,15,W-44,31,24,white,7,true,true)
-                text("LOGIN",22,45,W-44,21,12,white,7,true,true)
+                d.Title=text("TG @UX_Official",22,15,W-44,31,24,white,7,true,true)
+                text("LOGIN System",22,45,W-44,21,12,white,7,true,true)
                 line(W/2-118,56,W/2-47,56,1,color(224,242,255),7)
                 line(W/2+47,56,W/2+118,56,1,color(224,242,255),7)
                 text("LOGIN KEY",22,82,W-44,20,13,burgundy,7,true,false)
@@ -853,14 +853,14 @@ end)()
         -- Identity is pinned independently of the feature-settings location.
         -- All IO is bounded and happens at startup/login, or a delayed save retry.
         local paths=loginStoragePaths()
-        for i,path in ipairs(paths) do paths[i]=path:gsub("UXOfficial_UMG_ESP_settings.lua$","UXOfficialPro_LOGIN_MURSHID_V7_settings.lua") end
+        for i,path in ipairs(paths) do paths[i]=path:gsub("UXOfficial_UMG_ESP_settings.lua$","UXOfficial_LOGIN_MURSHID_V7_settings.lua") end
         local function loginPath(featurePath)
             if type(featurePath)~="string" then return nil end
             local prefix=featurePath:match("^(.*[/\\])[^/\\]+$")
-            return (prefix or "").."UXOfficialPro_LOGIN_MURSHID_V7_settings.lua"
+            return (prefix or "").."UXOfficial_LOGIN_MURSHID_V7_settings.lua"
         end
         local function identityPath(path)
-            return path:gsub("UXOfficialPro_LOGIN_MURSHID_V7_settings%.lua$","UXOfficialPro_DEVICE_MURSHID_V1_settings.lua")
+            return path:gsub("UXOfficial_LOGIN_MURSHID_V7_settings%.lua$","UXOfficial_DEVICE_MURSHID_V1_settings.lua")
         end
         local function digest(key,seed)
             return UXOfficialLicenseCore.Primitives.md5("LUNAR-DEVICE-1\0"..L.Scope.."\0"..key.."\0"..seed)
@@ -1021,7 +1021,7 @@ end)()
         recover()
         L.DestroyUI=function() destroy(L.LoginUI);destroy(L.WelcomeUI);L.LoginUI=nil;L.WelcomeUI=nil end
         local function wake()
-            if _G.UXOfficialProLogin and _G.UXOfficialProLogin._Wake then _G.UXOfficialProLogin._Wake() end
+            if _G.UXOfficialLogin and _G.UXOfficialLogin._Wake then _G.UXOfficialLogin._Wake() end
         end
         L.Core=UXOfficialLicenseCore
         L.Auth=UXOfficialLicenseCore.new(UXOfficialLicenseConfig,{
@@ -1130,7 +1130,7 @@ schedule=function(delay)
     if not ticker or type(ticker.AddTimerOnce)~="function" then API.LastError="TIMER_UNAVAILABLE";return end
     API.PendingTimer=true
     local ok,why=pcall(ticker.AddTimerOnce,delay,function()
-        if API.Stopped or _G.UXOfficialProLogin~=API then return end
+        if API.Stopped or _G.UXOfficialLogin~=API then return end
         API.PendingTimer=false;update()
         if L.NeedsUpdate or L.Pending or L.Dirty then schedule(0.5) end
     end)
@@ -1145,7 +1145,7 @@ function API.Start(options)
     if options.settingsPath then L.BindSettingsPath(options.settingsPath)
     elseif not API.StorageLocated then
         API.StorageLocated=true
-        for _,suffix in ipairs({"UXOfficialPro_FEATURES_V3_settings.lua","UXOfficial_UMG_ESP_settings.lua"}) do
+        for _,suffix in ipairs({"UXOfficial_FEATURES_V3_settings.lua","UXOfficial_UMG_ESP_settings.lua"}) do
             for _,path in ipairs(loginStoragePaths()) do
                 path=path:gsub("UXOfficial_UMG_ESP_settings%.lua$",suffix)
                 local ok,file=pcall(function()return io.open(path,"r")end)
@@ -3009,7 +3009,7 @@ do
         return state.Ready
     end
     g_UXOfficial_EnsureHackMenu = function()
-        if not (_G.UXOfficialProLogin and _G.UXOfficialProLogin.IsAuthorized and _G.UXOfficialProLogin.IsAuthorized()) then return false end
+        if not (_G.UXOfficialLogin and _G.UXOfficialLogin.IsAuthorized and _G.UXOfficialLogin.IsAuthorized()) then return false end
         local state = runtime()
         state.Ensure = g_UXOfficial_EnsureHackMenu
         if state.Initializing then return false end
@@ -9014,7 +9014,7 @@ end
 local exported=buildOriginalClass()
 local function UXOfficial_AuthorizedStartup()
     if _G.__UXOfficialAuthorizedStartupDone then return end
-    if not (_G.UXOfficialProLogin and _G.UXOfficialProLogin.IsAuthorized and _G.UXOfficialProLogin.IsAuthorized()) then return end
+    if not (_G.UXOfficialLogin and _G.UXOfficialLogin.IsAuthorized and _G.UXOfficialLogin.IsAuthorized()) then return end
     _G.__UXOfficialAuthorizedStartupDone = true
     local started,startError=pcall(function()
         g_UXOfficial_EnsureHackMenu()
@@ -9028,8 +9028,8 @@ local function UXOfficial_AuthorizedStartup()
         _G.LunarFeatures.Error("Startup",startError)
     end
 end
-if _G.UXOfficialProLogin and _G.UXOfficialProLogin.Bind then
-    _G.UXOfficialProLogin.Bind(UXOfficial_AuthorizedStartup, function()
+if _G.UXOfficialLogin and _G.UXOfficialLogin.Bind then
+    _G.UXOfficialLogin.Bind(UXOfficial_AuthorizedStartup, function()
         -- Lock the visible menu while authorization is absent; startup is never run here.
         _G.__UXOfficialAuthorizedStartupDone = false
     end)
