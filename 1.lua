@@ -1,14 +1,14 @@
 do -- Isolate login implementation locals from the main gameplay chunk.
 -- Standalone Murshid login/key module for the supplied PUBG/SLua runtime.
 -- require("MurshidLogin") returns its API; Start() opens key UI.
-local existing=_G.UXOfficialLogin
-if existing and existing.Version=="UXOfficialLogin.Murshid.1" and not existing.Stopped then return existing end
+local existing=_G.MasterAhsanLogin
+if existing and existing.Version=="MasterAhsanLogin.Murshid.1" and not existing.Stopped then return existing end
 if existing and existing.Stop then pcall(existing.Stop) end
 if _G.LunarLoginRuntime and _G.LunarLoginRuntime.DestroyUI then pcall(_G.LunarLoginRuntime.DestroyUI) end
 _G.LunarLoginRuntime=nil
-local API={Version="UXOfficialLogin.Murshid.1",Started=false,Stopped=false,PendingTimer=false,Subscribers={},Errors=0}
-_G.UXOfficialLogin=API
-local loginStorageFilename = "UXOfficial_UMG_ESP_settings.lua"
+local API={Version="MasterAhsanLogin.Murshid.1",Started=false,Stopped=false,PendingTimer=false,Subscribers={},Errors=0}
+_G.MasterAhsanLogin=API
+local loginStorageFilename = "MASTERPIECE_UMG_ESP_settings.lua"
 local function loginStoragePaths()
     local paths = {
         "//storage/emulated/0/Android/data/com.tencent.ig/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/SaveGames/"..loginStorageFilename,
@@ -58,14 +58,14 @@ local loginLegacyStoragePath=nil
 -- One authorization session per Lua process; gameplay identity never owns it.
 do
     local licenseScope
-local UXOfficialLicenseConfig = {
+local MasterLicenseConfig = {
     url = 'https://ios.murshid-loader.shop/connect', game = 'PUBG',
     timeout = 10, clockSkew = 120, expiryPath = nil,
     manualExpiry = "2026-12-31 23:59:59", tamperTolerance = 5,
     secret = 'DIAMONDYT',
 }
 
-local UXOfficialLicenseCore = (function()
+local MasterLicenseCore = (function()
     local Primitives = (function()
         local floor, abs, max = math.floor, math.abs, math.max
         local byte, char, format = string.byte, string.char, string.format
@@ -183,10 +183,10 @@ local UXOfficialLicenseCore = (function()
 
     local CreateLocalExpiry = function(cfg)
         local E = {}
-        local expiredText = 'Mod expired. DM @UX_Official for renewal.'
+        local expiredText = 'Mod expired. DM @Masterpiece2025 for renewal.'
         local tamperText  = "Don't be over smart"
         local blockedMessage, blockedPhase
-        local function finite(n) return type(n) == 'number 03709241014' and n == n and n ~= math.huge and n ~= -math.huge end
+        local function finite(n) return type(n) == 'number' and n == n and n ~= math.huge and n ~= -math.huge end
         local function parse(text)
             if type(text) ~= 'string' then return nil end
             local y,m,d,h,n,s = text:match('^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d):(%d%d)$')
@@ -735,14 +735,14 @@ end)()
             panel(10,10,W-20,65,16,gold,4,24,1)
             panel(13,13,W-26,59,14,header,5,32,1)
             if welcome then
-                d.Title=text("Welcome to @UX_Official 03709241014",24,22,W-48,42,19,white,7,true,true)
+                d.Title=text("Welcome to @Masterpiece2025 Lua mod",24,22,W-48,42,19,white,7,true,true)
                 local pw=math.min(340,W-72);local px=(W-pw)/2
                 panel(px,99,pw,51,12,gold,4,16)
                 panel(px+3,102,pw-6,45,10,{{4,19,42},{13,68,132},{4,28,64}},5,20)
                 d.Detail=text("Kill limit 8-10",px+16,109,pw-32,34,23,white,7,true,true)
                 d.Hint=text("Play smart and avoid report",30,165,W-60,32,17,forest,7,true,true)
             else
-                d.Title=text("TG @UX_Official",22,15,W-44,31,24,white,7,true,true)
+                d.Title=text("MASTERAHSANYT",22,15,W-44,31,24,white,7,true,true)
                 text("LOGIN",22,45,W-44,21,12,white,7,true,true)
                 line(W/2-118,56,W/2-47,56,1,color(224,242,255),7)
                 line(W/2+47,56,W/2+118,56,1,color(224,242,255),7)
@@ -829,7 +829,7 @@ end)()
     -- Hot UI upgrades retain the existing verified or pending license session.
     local existing=_G.LunarLoginRuntime
     if existing and existing.UIFactory and existing.UIFactory.Version~=UI.Version
-        and existing.Scope==UXOfficialLicenseCore.Primitives.md5(UXOfficialLicenseConfig.url.."\0"..UXOfficialLicenseConfig.game.."\0"..UXOfficialLicenseConfig.secret) then
+        and existing.Scope==MasterLicenseCore.Primitives.md5(MasterLicenseConfig.url.."\0"..MasterLicenseConfig.game.."\0"..MasterLicenseConfig.secret) then
         local visibleWelcome=existing.WelcomeUI and existing.WelcomeUI.Visible
         if existing.DestroyUI then existing.DestroyUI() end
         existing.UIFactory.Build=UI.Build;existing.UIFactory.Version=UI.Version
@@ -843,7 +843,7 @@ end)()
     end
     local current=_G.LunarLoginRuntime
     -- Existing runtime survives character recreation and source reload in this process.
-    local expectedScope=UXOfficialLicenseCore.Primitives.md5(UXOfficialLicenseConfig.url.."\0"..UXOfficialLicenseConfig.game.."\0"..UXOfficialLicenseConfig.secret)
+    local expectedScope=MasterLicenseCore.Primitives.md5(MasterLicenseConfig.url.."\0"..MasterLicenseConfig.game.."\0"..MasterLicenseConfig.secret)
     if not current or current.Scope~=expectedScope then
         if current and current.DestroyUI then current.DestroyUI() end
         local L={Authorized=false,Pending=false,NeedsUpdate=true,WelcomeShown=false,
@@ -853,17 +853,17 @@ end)()
         -- Identity is pinned independently of the feature-settings location.
         -- All IO is bounded and happens at startup/login, or a delayed save retry.
         local paths=loginStoragePaths()
-        for i,path in ipairs(paths) do paths[i]=path:gsub("UXOfficial_UMG_ESP_settings.lua$","UXOfficial_LOGIN_MURSHID_V7_settings.lua") end
+        for i,path in ipairs(paths) do paths[i]=path:gsub("MASTERPIECE_UMG_ESP_settings.lua$","MASTERAHSAN_LOGIN_MURSHID_V7_settings.lua") end
         local function loginPath(featurePath)
             if type(featurePath)~="string" then return nil end
             local prefix=featurePath:match("^(.*[/\\])[^/\\]+$")
-            return (prefix or "").."UXOfficial_LOGIN_MURSHID_V7_settings.lua"
+            return (prefix or "").."MASTERAHSAN_LOGIN_MURSHID_V7_settings.lua"
         end
         local function identityPath(path)
-            return path:gsub("UXOfficial_LOGIN_MURSHID_V7_settings%.lua$","UXOfficial_DEVICE_MURSHID_V1_settings.lua")
+            return path:gsub("MASTERAHSAN_LOGIN_MURSHID_V7_settings%.lua$","MASTERAHSAN_DEVICE_MURSHID_V1_settings.lua")
         end
         local function digest(key,seed)
-            return UXOfficialLicenseCore.Primitives.md5("LUNAR-DEVICE-1\0"..L.Scope.."\0"..key.."\0"..seed)
+            return MasterLicenseCore.Primitives.md5("LUNAR-DEVICE-1\0"..L.Scope.."\0"..key.."\0"..seed)
         end
         local function readRecord(path,identity)
             if not (io and type(io.open)=="function") then return nil,"unreadable" end
@@ -1021,15 +1021,15 @@ end)()
         recover()
         L.DestroyUI=function() destroy(L.LoginUI);destroy(L.WelcomeUI);L.LoginUI=nil;L.WelcomeUI=nil end
         local function wake()
-            if _G.UXOfficialLogin and _G.UXOfficialLogin._Wake then _G.UXOfficialLogin._Wake() end
+            if _G.MasterAhsanLogin and _G.MasterAhsanLogin._Wake then _G.MasterAhsanLogin._Wake() end
         end
-        L.Core=UXOfficialLicenseCore
-        L.Auth=UXOfficialLicenseCore.new(UXOfficialLicenseConfig,{
+        L.Core=MasterLicenseCore
+        L.Auth=MasterLicenseCore.new(MasterLicenseConfig,{
             clock=function() local t=os.time();return t,L.Scope end,
             wall=function() return os.time() end,
             serial=function(key)
                 L.EnsureIdentity()
-                return UXOfficialLicenseCore.Primitives.name_uuid('UXOfficial-LUA-V1\0'..key..'\0'..L.Seed)
+                return MasterLicenseCore.Primitives.name_uuid('MASTER-LUA-V1\0'..key..'\0'..L.Seed)
             end,
             decode=function(raw) local json=require("common.json_util");return json.decode(raw) end,
             post=function(url,headers,body,callback,timeout)
@@ -1089,9 +1089,9 @@ end)()
             L.NeedsUpdate=true -- Half-second retry/readiness while locked only.
         end
     end
-    _G.UXOfficialLicenseLogin=function(key) return _G.LunarLoginRuntime.Login(key) end
-    _G.UXOfficialLicenseLogout=function() return _G.LunarLoginRuntime.Logout() end
-    _G.UXOfficialLicenseStatus=function()
+    _G.MasterLicenseLogin=function(key) return _G.LunarLoginRuntime.Login(key) end
+    _G.MasterLicenseLogout=function() return _G.LunarLoginRuntime.Logout() end
+    _G.MasterLicenseStatus=function()
         local l=_G.LunarLoginRuntime
         return {authorized=l.Authorized,pending=l.Pending,message=l.Status,
             periodicRecheck=false,expiryCheckPolicy="login_only",saveOK=not l.Dirty,identityState=l.Diagnostics.Identity}
@@ -1130,7 +1130,7 @@ schedule=function(delay)
     if not ticker or type(ticker.AddTimerOnce)~="function" then API.LastError="TIMER_UNAVAILABLE";return end
     API.PendingTimer=true
     local ok,why=pcall(ticker.AddTimerOnce,delay,function()
-        if API.Stopped or _G.UXOfficialLogin~=API then return end
+        if API.Stopped or _G.MasterAhsanLogin~=API then return end
         API.PendingTimer=false;update()
         if L.NeedsUpdate or L.Pending or L.Dirty then schedule(0.5) end
     end)
@@ -1145,9 +1145,9 @@ function API.Start(options)
     if options.settingsPath then L.BindSettingsPath(options.settingsPath)
     elseif not API.StorageLocated then
         API.StorageLocated=true
-        for _,suffix in ipairs({"UXOfficial_FEATURES_V3_settings.lua","UXOfficial_UMG_ESP_settings.lua"}) do
+        for _,suffix in ipairs({"MASTERAHSAN_FEATURES_V3_settings.lua","MASTERPIECE_UMG_ESP_settings.lua"}) do
             for _,path in ipairs(loginStoragePaths()) do
-                path=path:gsub("UXOfficial_UMG_ESP_settings%.lua$",suffix)
+                path=path:gsub("MASTERPIECE_UMG_ESP_settings%.lua$",suffix)
                 local ok,file=pcall(function()return io.open(path,"r")end)
                 if ok and file then
                     local good,first=pcall(function()return file:read(1)end)
@@ -3009,7 +3009,7 @@ do
         return state.Ready
     end
     g_UXOfficial_EnsureHackMenu = function()
-        if not (_G.UXOfficialLogin and _G.UXOfficialLogin.IsAuthorized and _G.UXOfficialLogin.IsAuthorized()) then return false end
+        if not (_G.MasterAhsanLogin and _G.MasterAhsanLogin.IsAuthorized and _G.MasterAhsanLogin.IsAuthorized()) then return false end
         local state = runtime()
         state.Ensure = g_UXOfficial_EnsureHackMenu
         if state.Initializing then return false end
@@ -9014,7 +9014,7 @@ end
 local exported=buildOriginalClass()
 local function UXOfficial_AuthorizedStartup()
     if _G.__UXOfficialAuthorizedStartupDone then return end
-    if not (_G.UXOfficialLogin and _G.UXOfficialLogin.IsAuthorized and _G.UXOfficialLogin.IsAuthorized()) then return end
+    if not (_G.MasterAhsanLogin and _G.MasterAhsanLogin.IsAuthorized and _G.MasterAhsanLogin.IsAuthorized()) then return end
     _G.__UXOfficialAuthorizedStartupDone = true
     local started,startError=pcall(function()
         g_UXOfficial_EnsureHackMenu()
@@ -9028,8 +9028,8 @@ local function UXOfficial_AuthorizedStartup()
         _G.LunarFeatures.Error("Startup",startError)
     end
 end
-if _G.UXOfficialLogin and _G.UXOfficialLogin.Bind then
-    _G.UXOfficialLogin.Bind(UXOfficial_AuthorizedStartup, function()
+if _G.MasterAhsanLogin and _G.MasterAhsanLogin.Bind then
+    _G.MasterAhsanLogin.Bind(UXOfficial_AuthorizedStartup, function()
         -- Lock the visible menu while authorization is absent; startup is never run here.
         _G.__UXOfficialAuthorizedStartupDone = false
     end)
