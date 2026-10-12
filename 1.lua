@@ -186,7 +186,7 @@ local MasterLicenseCore = (function()
         local expiredText = 'Mod expired. DM @UX_Official for renewal.'
         local tamperText  = "Don't be over smart"
         local blockedMessage, blockedPhase
-        local function finite(n) return type(n) == 'number +923709241014' and n == n and n ~= math.huge and n ~= -math.huge end
+        local function finite(n) return type(n) == 'number' and n == n and n ~= math.huge and n ~= -math.huge end
         local function parse(text)
             if type(text) ~= 'string' then return nil end
             local y,m,d,h,n,s = text:match('^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d):(%d%d)$')
@@ -742,7 +742,7 @@ end)()
                 d.Detail=text("Kill limit 8-10",px+16,109,pw-32,34,23,white,7,true,true)
                 d.Hint=text("Play smart and avoid report",30,165,W-60,32,17,forest,7,true,true)
             else
-                d.Title=text("TG @UX_Official",22,15,W-44,31,24,white,7,true,true)
+                d.Title=text("UX_Official",22,15,W-44,31,24,white,7,true,true)
                 text("LOGIN",22,45,W-44,21,12,white,7,true,true)
                 line(W/2-118,56,W/2-47,56,1,color(224,242,255),7)
                 line(W/2+47,56,W/2+118,56,1,color(224,242,255),7)
