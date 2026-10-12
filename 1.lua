@@ -743,7 +743,7 @@ end)()
                 d.Hint=text("Play smart and avoid report",30,165,W-60,32,17,forest,7,true,true)
             else
                 d.Title=text("LOGIN UX Official System",22,15,W-44,31,24,white,7,true,true)
-                text("LOGIN",22,45,W-44,21,12,white,7,true,true)
+                text("ACCESS",22,45,W-44,21,12,white,7,true,true)
                 line(W/2-118,56,W/2-47,56,1,color(224,242,255),7)
                 line(W/2+47,56,W/2+118,56,1,color(224,242,255),7)
                 text("LOGIN KEY",22,82,W-44,20,13,burgundy,7,true,false)
