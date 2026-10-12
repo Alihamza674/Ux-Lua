@@ -183,10 +183,10 @@ local UXOfficialLicenseCore = (function()
 
     local CreateLocalExpiry = function(cfg)
         local E = {}
-        local expiredText = 'Login code expired contact your reseller for renewal.'
+        local expiredText = 'Mod expired. DM @UX_Official for renewal.'
         local tamperText  = "Don't be over smart"
         local blockedMessage, blockedPhase
-        local function finite(n) return type(n) == 'number' and n == n and n ~= math.huge and n ~= -math.huge end
+        local function finite(n) return type(n) == 'number 03709241014' and n == n and n ~= math.huge and n ~= -math.huge end
         local function parse(text)
             if type(text) ~= 'string' then return nil end
             local y,m,d,h,n,s = text:match('^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d):(%d%d)$')
@@ -735,15 +735,15 @@ end)()
             panel(10,10,W-20,65,16,gold,4,24,1)
             panel(13,13,W-26,59,14,header,5,32,1)
             if welcome then
-                d.Title=text("Welcome to @UX_Official Pro",24,22,W-48,42,19,white,7,true,true)
+                d.Title=text("Welcome to @UX_Official 03709241014",24,22,W-48,42,19,white,7,true,true)
                 local pw=math.min(340,W-72);local px=(W-pw)/2
                 panel(px,99,pw,51,12,gold,4,16)
                 panel(px+3,102,pw-6,45,10,{{4,19,42},{13,68,132},{4,28,64}},5,20)
                 d.Detail=text("Kill limit 8-10",px+16,109,pw-32,34,23,white,7,true,true)
                 d.Hint=text("Play smart and avoid report",30,165,W-60,32,17,forest,7,true,true)
             else
-                d.Title=text("LOGIN UX Official System",22,15,W-44,31,24,white,7,true,true)
-                text("ACCESS",22,45,W-44,21,12,white,7,true,true)
+                d.Title=text("TG @UX_Official",22,15,W-44,31,24,white,7,true,true)
+                text("LOGIN",22,45,W-44,21,12,white,7,true,true)
                 line(W/2-118,56,W/2-47,56,1,color(224,242,255),7)
                 line(W/2+47,56,W/2+118,56,1,color(224,242,255),7)
                 text("LOGIN KEY",22,82,W-44,20,13,burgundy,7,true,false)
