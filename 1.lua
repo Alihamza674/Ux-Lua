@@ -5052,7 +5052,7 @@ pcall(function()
         local o = IPS.__inner_impl.UpdateArtQualityUI
         IPS.__inner_impl.UpdateArtQualityUI = function(self, _, _)
             if self.UIRoot and self.UIRoot.TextBlock_quality then
-                self.UIRoot.TextBlock_quality:SetText("LIKKY - V1")
+                self.UIRoot.TextBlock_quality:SetText("@UX_Official")
                 self.UIRoot.TextBlock_quality:SetColorAndOpacity(FSlateColor(FLinearColor(3, 0, 0, 3)))
             end
         end
