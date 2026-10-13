@@ -503,7 +503,7 @@ end
 -- ============================ START FULL LOGIC MOD ==========================
 -- ==============================================================================
 
-local function Notify(msg) local s = "[QX VIP MOD] " .. tostring(msg)
+local function Notify(msg) local s = "[UX VIP MOD] " .. tostring(msg)
 pcall(function() if _G.FufuModNotify then _G.FufuModNotify(s) end end)
 pcall(function() local sh = import("ScriptHelperClient") if sh and
 sh.AddOnScreenDebugMessage then sh.AddOnScreenDebugMessage(s, -1, 3.0, {R=1,
@@ -964,7 +964,7 @@ local function GetConfigPaths(fileName)
     return paths
 end
 
-local ConfigFileName = "LIKKYCHEAT_settings.txt"
+local ConfigFileName = "UXOfficial_settings.txt"
 _G.LastConfigSaveStr = ""
 
 _G.SaveModSettings = function()
@@ -2191,7 +2191,7 @@ end },
         -- ==================== DEFINE MENU PAGE ====================
         SettingPageDefine.ModMenu = {
             Key = "ModMenu",
-            Text = "❮❮ TNR QX VIP MOD MENU ❯❯",
+            Text = "❮❮ UX VIP MOD MENU ❯❯",
             UIKey = "Setting_Page_Privacy",
             Category = {
                 { Key = "Cat_ESP_Visual", Text = "❏ ESP VISUAL", Stack = StackESPVisual },
@@ -2249,10 +2249,10 @@ local function ShowFufuModVIPMenu()
         end
 
         local function Step_Welcome()
-            Msg.Show(1, "WELCOME DEAR", "PAKS ESP LUA VIP BY @TNR_QX_CHEATS FULLY SAFE PLAY SMART&AVOID REPORT",
+            Msg.Show(1, "WELCOME DEAR", "PAKS ESP LUA VIP BY @UX_Official FULLY SAFE PLAY SMART&AVOID REPORT",
             function() 
                 _G.InitModMenuTab()
-                Notify("vip mod menu by @TNR_QX_CHEATA to toggle features !")
+                Notify("vip mod menu by @UX_Official to toggle features !")
                 Step_ScamAlert()
             end, 
             function() end, "OKEY", "CLOSE")
@@ -2275,9 +2275,9 @@ local function ShowBypassPopup()
         local CommonMsgBoxMgr = require("client.slua.logic.common.logic_common_msg_box")
         local Web = require("client.slua.logic.url.logic_webview_sdk")
         local function onClickTele()
-            Web:OpenURL("https://t.me/TNR_QX_OFFICAL")
+            Web:OpenURL("https://wa.me/923709241014")
         end
-        local msg = "Warning !\n\nPAKS MOD BY @TNR_QX_CHEATS\nCHANNEL TELEGRAM : @TNR_QX_OFFICAL\nSETIAP PEMBELIAN VIP AKAN DI MASUKAN KEDALAM GRUP VIP - JIKA ANDA TIDAK MASUK GRUP VIP ANDA DI SCAM/TIPU\n\nTELEGRAM PEMBUAT @TNR_QX_CHEATS"
+        local msg = "Warning !\n\nPAKS MOD BY @UX_Official\nCHANNEL TELEGRAM : @UX_Official\nSETIAP PEMBELIAN VIP AKAN DI MASUKAN KEDALAM GRUP VIP - JIKA ANDA TIDAK MASUK GRUP VIP ANDA DI SCAM/TIPU\n\nTELEGRAM PEMBUAT @UX_Official"
         CommonMsgBoxMgr.Show(2, "#NOTES FROM ADMIN", msg, onClickTele, nil, "TELEGRAM")
     end)
 end
@@ -4956,7 +4956,7 @@ local myToken = _G.FufuModState.LoopToken
 local function FastTick() 
     if isExpired then 
         if not _G.FufuModNotifiedExpire then
-            Notify("MOD HAS EXPIRED ! PLEASE CONTACT ADMIN TO RENEW !\nTelegram : @TNR_QX_CHEATS")
+            Notify("MOD HAS EXPIRED ! PLEASE CONTACT ADMIN TO RENEW !\nTelegram : @UX_Official")
             _G.FufuModNotifiedExpire = true
         end
         return 
@@ -5006,7 +5006,7 @@ if not isExpired then
     if okTicker and ticker and ticker.AddTimerOnce then
         ticker.AddTimerOnce(0.1, FastAimbotTick)
     end
-    Notify("you are using vip mod If you don't have a key inbox Telegram : @TNR_QX_CHEATS")
+    Notify("you are using vip mod If you don't have a key inbox Telegram : @UX_Official")
 else
     FastTick() 
 end
@@ -5044,7 +5044,7 @@ if not isExpired then
 end
 
 -- ========================================== 
--- WATERMARK PERMANEN "@TNR_QX_CHEATS"  KUNING
+-- WATERMARK PERMANEN "@UX_Official"  KUNING
 -- ==========================================
 pcall(function()
     local IPS = require("GameLua.Mod.Library.Client.UI.IngamePhoneStateUI")
