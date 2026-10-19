@@ -1165,6 +1165,8 @@ end)()
     -- All gradient/angle/brush work happens at construction. No animation,
     -- background asset, network dependency, text outline or external backdrop.
     function UI.Build(kind,key,status,submit)
+        -- Welcome popup removed: do not construct its panel, border, text, or OK button.
+        if kind=="welcome" then return nil,"WELCOME_DISABLED" end
         local p=parent();if not p then return nil,"UI_NOT_READY" end
         local enums=UEnums.ESlateVisibility
         local passive=enums.SelfHitTestInvisible
@@ -2421,6 +2423,8 @@ do
     -- All gradient/angle/brush work happens at construction. No animation,
     -- background asset, network dependency, text outline or external backdrop.
     function UI.Build(kind,key,status,submit)
+        -- Welcome popup removed: do not construct its panel, border, text, or OK button.
+        if kind=="welcome" then return nil,"WELCOME_DISABLED" end
         local p=parent();if not p then return nil,"UI_NOT_READY" end
         local enums=UEnums.ESlateVisibility
         local passive=enums.SelfHitTestInvisible
@@ -2672,35 +2676,17 @@ do
         W.ReadyAt=nil;W.Due=nil;W.Attempts=0;W.Blocked=false
         W.NeedsUpdate=not W.WelcomeShown and not W.Dismissed
     end
+    -- Welcome popup removed entirely: destroy any existing instance and never recreate it.
+    W.DestroyUI()
+    W.WelcomeShown=true
+    W.Dismissed=true
+    W.NeedsUpdate=false
+    W.Due=nil
     W.Update=function(now,world,pc,pawn)
-        if W.WelcomeShown or W.Dismissed then W.NeedsUpdate=false;W.Due=nil;return end
-        if W.World~=world or W.PC~=pc or W.Pawn~=pawn or (W.LastClock and now<W.LastClock) then
-            W.ContextChanged(world,pc,pawn,now)
-        end
-        W.LastClock=now
-        if W.Blocked then return end
-        if not world or not pc or not pawn then W.ReadyAt=nil;W.Due=nil;return end
-        if W.Due and now<W.Due then return end
-        -- Only known explicit hidden flags reject an otherwise valid local pawn.
-        -- No required mesh/property guesses: some modes expose different pawns.
-        if member(pawn,"bHidden")==true or member(pawn,"bHiddenInGame")==true then
-            W.ReadyAt=nil;W.Due=now+.5;return
-        end
-        if not W.ReadyAt then W.ReadyAt=now;W.Due=now+3;return end
-        if now<W.ReadyAt+3 then W.Due=W.ReadyAt+3;return end
-        W.BuildAttempts=W.BuildAttempts+1
-        local d,why=UI.Build("welcome")
-        if d then
-            W.WelcomeUI=d;W.WelcomeShown=true;W.NeedsUpdate=false;W.Due=nil;W.LastError=nil
-        else
-            W.LastError=why
-            if why=="UI_NOT_READY" then W.Due=now+.5
-            else
-                W.Attempts=W.Attempts+1
-                if W.Attempts>=3 then W.Blocked=true;W.NeedsUpdate=false;W.Due=nil
-                else W.Due=now+W.Attempts end
-            end
-        end
+        W.NeedsUpdate=false
+        W.Due=nil
+        if W.WelcomeUI then W.DestroyUI() end
+        return
     end
 
 end
